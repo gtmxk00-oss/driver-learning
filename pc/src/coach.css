@@ -1,0 +1,64 @@
+.coach-note{margin:0 0 14px;color:var(--ink-2);font-size:14px;line-height:1.6}
+.coach-stage{position:relative;aspect-ratio:16/9;width:100%;overflow:hidden;background:var(--sim-bg);color:var(--sim-ink);border-radius:var(--radius-stage);font-family:var(--font)}
+.coach-badge{position:absolute;right:2.2%;top:3.4%;z-index:2;padding:.4em .9em;border-radius:999px;background:var(--surface);color:var(--ink);font-size:clamp(11px,1.5cqw,30px);font-weight:700}
+.coach-stage{container-type:inline-size}
+.coach-screen{position:absolute;inset:0;display:grid;grid-template-columns:61% 39%}
+.coach-navi{position:relative;display:flex;flex-direction:column;min-height:0;background:var(--sim-bg);color:var(--sim-ink)}
+.coach-navi-head{display:grid;grid-template-columns:1fr auto;gap:.1em 1em;align-items:baseline;padding:3cqw 3.2cqw 1.6cqw;background:var(--sim-panel);color:var(--sim-ink)}
+.coach-navi-head span{grid-column:1/-1;font-size:1.5cqw;opacity:.8}
+.coach-navi-head strong{font-size:4.2cqw;line-height:1.15}
+.coach-navi-head b{font-size:4.2cqw;font-variant-numeric:tabular-nums}
+.coach-road-wrap{flex:1;min-height:0;display:flex;justify-content:center}
+.coach-road-wrap svg{height:100%;width:100%}
+.coach-road{fill:none;stroke:var(--sim-road);stroke-width:56;stroke-linecap:round}
+.coach-lane{fill:none;stroke:var(--sim-lane);stroke-width:3;stroke-dasharray:16 18}
+.coach-route{fill:none;stroke:var(--sim-route);stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.coach-car{fill:var(--sim-ink);stroke:var(--sim-bg);stroke-width:5}
+.coach-signal{position:absolute;left:50%;bottom:2.4cqw;transform:translateX(-50%);display:flex;align-items:center;gap:1.2cqw;padding:.9cqw 1.6cqw;background:var(--sim-panel);border-radius:999px}
+.coach-signal small{font-size:1.45cqw;color:var(--sim-ink-2)}
+.coach-lamp{font-family:var(--font);font-size:2.3cqw;line-height:1;color:var(--sim-lane)}
+.coach-lamp.on{color:var(--sim-good)}
+.coach-app{display:flex;flex-direction:column;gap:1.4cqw;padding:7cqw 2.6cqw 2.4cqw;background:var(--surface);color:var(--ink);min-height:0}
+.coach-app-brand{font-size:2.5cqw;font-weight:800;color:var(--accent-text)}
+.coach-tag{font-size:2cqw;font-weight:700}
+.coach-chips{display:flex;gap:.8cqw;flex-wrap:wrap}
+.coach-chips span{padding:.35em .8em;border-radius:999px;background:var(--surface-2);color:var(--ink-2);font-size:1.5cqw;font-weight:700}
+.coach-chips span.on{background:var(--accent-soft);color:var(--accent-text)}
+.coach-status{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.6cqw;min-height:0;padding:1.8cqw;border-radius:1.2cqw;background:var(--surface-2)}
+.coach-status small{font-size:1.5cqw;font-weight:700;color:var(--ink-2)}
+.coach-status p{margin:0;font-size:2.5cqw;line-height:1.35;font-weight:700;word-break:keep-all}
+.coach-status.speak{background:var(--accent);color:var(--accent-ink)}
+.coach-status.speak small{color:var(--accent-ink)}
+.coach-status.silent{background:var(--strong);color:var(--on-strong)}
+.coach-status.silent small{color:var(--on-strong-2)}
+.coach-facts{margin:0;display:grid;gap:.5cqw}
+.coach-facts div{display:flex;justify-content:space-between;gap:1cqw;font-size:1.6cqw}
+.coach-facts dt{color:var(--ink-2)}
+.coach-facts dd{margin:0;font-weight:700;text-align:right}
+.coach-card-scene{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 9cqw;background:var(--strong);color:var(--on-strong)}
+.coach-card-brand{font-size:1.9cqw;font-weight:700;color:var(--accent)}
+.coach-card-scene h2{margin:1cqw 0;font-size:6cqw;line-height:1.2;word-break:keep-all}
+.coach-card-scene p{margin:0;font-size:2.6cqw;line-height:1.45;word-break:keep-all;opacity:.95}
+.coach-track{height:4px;margin-top:10px;background:var(--rm-line);border-radius:2px;overflow:hidden}
+.coach-track span{display:block;height:100%;width:0;background:var(--accent)}
+.coach-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.coach-controls button,.coach-scenes button{min-height:44px;padding:8px 14px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.coach-controls .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.coach-scenes{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.coach-scenes button{font-size:13px;font-weight:500}
+.coach-scenes button.active{border-color:var(--accent);color:var(--accent-text);background:var(--accent-soft)}
+.coach-caption{min-height:3em;margin:12px 0 0;color:var(--ink);line-height:1.6}
+.coach-sub{position:absolute;left:0;right:0;bottom:0;z-index:3;display:flex;align-items:center;justify-content:center;height:11%;padding:0 4cqw;background:var(--sim-bg);color:var(--sim-ink);font-size:2.05cqw;line-height:1.3;text-align:center;word-break:keep-all}
+.coach-fullscreen .coach-screen{bottom:11%}
+.coach-fullscreen #coachStage{position:fixed;inset:0;z-index:3000;width:100%;height:100vh;aspect-ratio:auto;border-radius:0}
+@media (prefers-reduced-motion:reduce){.coach-track span{transition:none}}
+.coach-modes{display:flex;gap:6px;margin:0 0 12px}
+.coach-modes button{min-height:40px;padding:8px 14px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.coach-modes button.active{border-color:var(--accent);color:var(--accent-text);background:var(--accent-soft)}
+.coach-live-body{flex:1;display:grid;align-content:start;gap:1.2cqw;margin:0;padding:2.4cqw 3.2cqw}
+.coach-live-body div{display:flex;justify-content:space-between;gap:1cqw;padding-bottom:.8cqw;border-bottom:1px solid var(--sim-edge);font-size:2cqw}
+.coach-live-body dt{color:var(--sim-ink-2)}
+.coach-live-body dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.coach-live-type{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.coach-live-type select{min-height:44px;padding:6px 10px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit}
+.coach-controls button:disabled{opacity:.55;cursor:not-allowed}

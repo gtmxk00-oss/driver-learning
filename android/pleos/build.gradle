@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+// Release keys never live in the source tree of a shared package; see keystore.properties.example.
+def signing = new Properties()
+def signingFile = [rootProject.file('keystore.properties'), rootProject.file('../../work/release-signing/keystore.properties')].find { it.exists() }
+if (signingFile) signingFile.withInputStream { signing.load(it) }
+android {
+    namespace 'kr.routememory.pleos'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kr.routememory.pleos'
+        minSdk 29
+        targetSdk 35
+        versionCode 10
+        versionName '0.10.0-pleos'
+    }
+    signingConfigs {
+        release {
+            if (signingFile) {
+                storeFile rootProject.file(signing['storeFile'])
+                storePassword signing['storePassword']
+                keyAlias signing['keyAlias']
+                keyPassword signing['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (signingFile) signingConfig signingConfigs.release
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    testOptions { unitTests.includeAndroidResources = true }
+}
+dependencies {
+    implementation project(':coach')
+    // Pleos Connect SDKs: turn signal and gear from Vehicle, next turn and reroutes from NaviHelper.
+    implementation 'ai.pleos.playground:Vehicle:2.3.2'
+    implementation 'ai.pleos.playground:NaviHelper:3.0.5'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}

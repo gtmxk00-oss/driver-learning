@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:name="android.hardware.type.automotive" android:required="true" />
+    <!-- Pleos Connect SDK: read the turn signal (CAR_LIGHTS), gear and driving state (CAR_POWERTRAIN, CAR_DRIVE), navigation events (NAVI_ROUTE). -->
+    <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
+    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
+    <application android:label="길기억" android:icon="@drawable/ic_launcher" android:allowBackup="false" android:fullBackupContent="false">
+        <activity android:name="kr.routememory.pleos.MainActivity" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- One status line and one question: the only screen meant to stay up while driving. -->
+        <activity android:name="kr.routememory.pleos.GuidanceActivity" android:exported="false" android:label="길기억 차량 연동">
+            <meta-data android:name="distractionOptimized" android:value="true" />
+        </activity>
+    </application>
+</manifest>

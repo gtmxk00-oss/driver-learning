@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'kr.routememory.automotive'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kr.routememory.automotive'
+        minSdk 29
+        targetSdk 35
+        versionCode 9
+        versionName '0.9.0-live'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    implementation project(':shared')
+    implementation 'androidx.car.app:app-automotive:1.7.0'
+    // The host activity's superclass must also be visible on the compile/Lint classpath.
+    implementation 'androidx.fragment:fragment:1.3.0'
+}

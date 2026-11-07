@@ -1,0 +1,8 @@
+node_modules/
+*.tar.gz
+*.log
+.env
+.env.*
+!.env.example
+*.key
+*.pem

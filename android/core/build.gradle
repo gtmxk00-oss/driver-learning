@@ -1,0 +1,27 @@
+plugins { id 'java-library' }
+java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+tasks.register('verifyCore', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'kr.routememory.core.EngineTest'
+}
+tasks.register('verifyCoach', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'kr.routememory.core.DriveCoachTest'
+}
+tasks.register('verifyLive', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'kr.routememory.core.LiveCoachTest'
+}
+tasks.register('verifyGuidance', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'kr.routememory.core.GuidanceSessionTest'
+}
+tasks.register('verifyRoadTracker', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'kr.routememory.core.RoadTrackerTest'
+}

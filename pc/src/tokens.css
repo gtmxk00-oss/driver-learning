@@ -1,0 +1,57 @@
+/* Hallmark · redesign: restyle (app screens, layout kept) · genre: atmospheric · theme: custom (user reference: near-black ground, one warm orange signal, heavy Korean sans) · shape: app screen · modes: light+dark · v2.0.0
+ * critique: a driving tool, not a landing page; one orange signal for the action, the selection and the voice, everything else ink on warm paper or night.
+ * waive 7a-dark: the night ground sits at L 6%, darker than the 12-18% recipe, because the user's reference is a near-black screen and a car cabin at night needs a dim panel.
+ * waive 24b: spacing inside the kept layout stays as found; only colour, type, radius and surfaces change.
+ * waive 47a: .traffic-light draws the simulated road signal on the virtual map, not a browser or OS window.
+ * waive 48, 7a, 62 in leaflet.css: the map library stylesheet is bundled unmodified under its BSD licence; theme.css restyles its controls on the tokens. */
+@font-face{font-family:'Pretendard Std Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url(/* PRETENDARD_WOFF2 */) format('woff2-variations')}
+:root{
+  color-scheme:light;
+  --font:'Pretendard Std Variable','Pretendard','Malgun Gothic','Apple SD Gothic Neo',system-ui,sans-serif;
+  --weight-body:450;--weight-strong:650;--weight-head:780;
+  --canvas:#f3f2ee;--surface:#fbfaf7;--surface-2:#eae8e2;--surface-3:#dedbd3;
+  --rule:#dcd8cf;--rule-strong:#bdb7ab;
+  --ink:#17181c;--ink-2:#45474f;--ink-3:#63656d;
+  --accent:#ff6a1a;--accent-hover:#ff7f3a;--accent-ink:#1b0b02;--accent-text:#b23c06;--accent-soft:#fde3d2;--accent-veil:rgba(255,106,26,.16);
+  --focus:#b23c06;
+  --strong:#1b1c21;--on-strong:#f4f1eb;--on-strong-2:#b9b5ac;
+  --ok:#0f6b46;--ok-soft:#dcefe5;--warn:#8a5a00;--warn-soft:#f8ebcc;--danger:#b4261b;--danger-soft:#f9e0dc;
+  --veil:rgba(251,250,247,.86);--scrim:rgba(23,24,28,.46);--shade:rgba(23,24,28,.10);
+  --sim-bg:#14151a;--sim-panel:#1d1f25;--sim-chip:#2a2c33;--sim-road:#30333b;--sim-road-edge:#3d4049;--sim-edge:#3a3d45;--sim-lane:#5b5f69;
+  --sim-ink:#f1eee8;--sim-ink-2:#b6b3ac;--sim-route:#ff7a26;--sim-good:#5ccf95;--sim-warn:#f4b740;--sim-veil:rgba(241,238,232,.12);
+  --glow:none;
+  --radius-control:10px;--radius-card:14px;--radius-stage:18px;
+  --dur-micro:120ms;--dur-short:200ms;
+  /* The map screen's older names, kept so every screen resolves them the same way */
+  --rm-ink:var(--ink);--rm-muted:var(--ink-2);--rm-subtle:var(--ink-3);--rm-line:var(--rule);--rm-soft:var(--surface-2);--rm-surface:var(--surface);
+  --rm-blue:var(--accent);--rm-blue-soft:var(--accent-soft);--rm-blue-text:var(--accent-text);--rm-focus:var(--focus);
+  --rm-control-radius:var(--radius-control);--rm-radius:var(--radius-card);--rm-shadow:none;--rm-font:var(--font);
+}
+[data-mode="dark"]{
+  color-scheme:dark;
+  --weight-body:400;
+  --canvas:#111215;--surface:#18191d;--surface-2:#202126;--surface-3:#292a30;
+  --rule:#2d2f35;--rule-strong:#44474f;
+  --ink:#f1eee8;--ink-2:#c3c0b8;--ink-3:#9a978f;
+  --accent:#ff7a26;--accent-hover:#ff8f47;--accent-ink:#1b0b02;--accent-text:#ff9550;--accent-soft:#3a2214;--accent-veil:rgba(255,122,38,.18);
+  --focus:#ff9a5c;
+  --strong:#22232a;--on-strong:#f4f1eb;--on-strong-2:#b9b5ac;
+  --ok:#5ccf95;--ok-soft:#173327;--warn:#f4b740;--warn-soft:#3a2d12;--danger:#ff7a6e;--danger-soft:#3b1a17;
+  --veil:rgba(24,25,29,.88);--scrim:rgba(6,6,8,.62);--shade:rgba(0,0,0,0);
+  --glow:radial-gradient(60rem 22rem at 18% -6rem,rgba(255,106,26,.16),rgba(255,106,26,0) 70%);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-mode]){
+    color-scheme:dark;
+    --weight-body:400;
+    --canvas:#111215;--surface:#18191d;--surface-2:#202126;--surface-3:#292a30;
+    --rule:#2d2f35;--rule-strong:#44474f;
+    --ink:#f1eee8;--ink-2:#c3c0b8;--ink-3:#9a978f;
+    --accent:#ff7a26;--accent-hover:#ff8f47;--accent-ink:#1b0b02;--accent-text:#ff9550;--accent-soft:#3a2214;--accent-veil:rgba(255,122,38,.18);
+    --focus:#ff9a5c;
+    --strong:#22232a;--on-strong:#f4f1eb;--on-strong-2:#b9b5ac;
+    --ok:#5ccf95;--ok-soft:#173327;--warn:#f4b740;--warn-soft:#3a2d12;--danger:#ff7a6e;--danger-soft:#3b1a17;
+    --veil:rgba(24,25,29,.88);--scrim:rgba(6,6,8,.62);--shade:rgba(0,0,0,0);
+    --glow:radial-gradient(60rem 22rem at 18% -6rem,rgba(255,106,26,.16),rgba(255,106,26,0) 70%);
+  }
+}

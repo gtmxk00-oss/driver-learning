@@ -1,0 +1,11 @@
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google(); mavenCentral()
+        // Pleos Connect SDKs (Vehicle, NaviHelper); public, no credentials.
+        maven { url 'https://nexus-playground.pleos.ai/repository/maven-releases/' }
+    }
+}
+rootProject.name = 'RouteMemory'
+include ':core', ':shared', ':coach', ':mobile', ':automotive', ':pleos'

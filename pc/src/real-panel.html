@@ -1,0 +1,68 @@
+<section id="realView" class="view real-navigation" aria-label="실제 지도와 GPS 길 안내">
+  <div class="real-map-frame"><div id="realRoadMap" role="region" aria-label="실제 도로 지도"></div></div>
+  <section class="real-planner" aria-label="출발지와 목적지 설정">
+    <form id="realRouteForm">
+      <details id="realTripEditor" class="real-trip-editor">
+        <summary><span class="real-search-pin"><svg aria-hidden="true"><use href="#i-pin"/></svg></span><span class="real-search-title"><strong id="realDestinationName">경복궁으로 안내</strong><small id="realOriginName">서울 시청에서 출발</small></span><span class="real-editor-chevron">⌄</span></summary>
+        <div class="real-editor-body">
+          <div class="real-editor-heading"><h2>어디로 갈까요?</h2><span>주소 · 장소 검색</span></div>
+          <div class="real-place-search" role="search" aria-label="주소·장소 검색">
+            <label class="real-place-label" for="realPlaceQuery">목적지 이름 또는 주소</label>
+            <div class="real-place-search-row"><input id="realPlaceQuery" type="search" maxlength="120" autocomplete="off" placeholder="예: 경복궁, 서울역, 사직로 161"><button id="realPlaceSearch" class="button primary" type="button">검색</button></div>
+            <p id="realPlaceStatus" class="real-place-status" role="status">검색 결과를 선택하면 해당 장소까지의 경로를 찾습니다.</p>
+            <ul id="realPlaceResults" class="real-place-results" aria-label="목적지 검색 결과"></ul>
+            <p id="realSelectedAddress" class="real-selected-address" hidden></p>
+            <p class="real-place-attribution">검색: Photon · © OpenStreetMap contributors<br>검색어를 Photon에 전송하며 기기에 저장하지 않습니다.</p>
+          </div>
+          <details id="realCoordinateEditor" class="real-coordinate-editor"><summary>지도·좌표로 직접 지정</summary>
+            <div class="real-coordinate-field"><label for="realOrigin"><i></i>출발지</label><input id="realOrigin" value="37.5665, 126.9780" required autocomplete="off" placeholder="출발지 위도, 경도"></div>
+            <div class="real-coordinate-field"><label for="realDestination"><i class="real-destination-dot"></i>목적지</label><input id="realDestination" value="37.5796, 126.9770" required autocomplete="off" placeholder="목적지 위도, 경도"></div>
+            <div class="real-selection-tools"><button type="button" class="real-select-point" data-real-point="origin" aria-pressed="false">지도에서 출발지</button><button type="button" class="real-select-point selected" data-real-point="destination" aria-pressed="true">지도에서 목적지</button></div>
+          </details>
+          <button type="button" id="realSample" class="real-sample-button"><svg aria-hidden="true"><use href="#i-route"/></svg><span>서울 시청 → 경복궁 샘플</span><span>↗</span></button>
+          <p class="real-editor-note">검색 데이터에 없는 장소는 지도를 눌러 지정할 수 있습니다.</p>
+          <p class="real-editor-privacy">결과 선택·경로 탐색 시 출발·도착 좌표를 OSRM에 전송합니다.</p>
+        </div>
+      </details>
+      <button id="realRouteSearch" class="button primary real-search-submit" type="submit" aria-label="경로 탐색">경로 탐색</button>
+    </form>
+    <div class="real-nearby-shortcuts" aria-label="주변 시설 찾기"><span>주변</span><button type="button" id="realNearbyFuel" aria-controls="realNearbyPanel" aria-expanded="false"><span class="real-fuel-symbol" aria-hidden="true"></span>주유소</button><button type="button" id="realNearbyParking" aria-controls="realNearbyPanel" aria-expanded="false"><span class="real-parking-symbol" aria-hidden="true">P</span>주차장</button></div>
+  </section>
+  <section id="realNearbyPanel" class="real-nearby-panel" role="dialog" aria-modal="false" aria-labelledby="realNearbyTitle" hidden>
+    <div class="real-nearby-heading"><div><h2 id="realNearbyTitle">주변 주유소</h2></div><button type="button" id="realNearbyClose" class="real-nearby-close" aria-label="주변 검색 닫기">×</button></div>
+    <div class="real-nearby-body">
+      <div class="real-nearby-kind" role="group" aria-label="시설 종류"><button type="button" id="realNearbyKindFuel" aria-pressed="true"><span class="real-fuel-symbol" aria-hidden="true"></span>주유소</button><button type="button" id="realNearbyKindParking" aria-pressed="false"><span class="real-parking-symbol" aria-hidden="true">P</span>주차장</button></div>
+      <div class="real-nearby-controls"><label for="realNearbyCenter">찾을 위치<select id="realNearbyCenter"><option value="destination">목적지 주변</option><option value="current">현재 위치 주변</option></select></label><label for="realNearbyRadius">반경<select id="realNearbyRadius"><option value="1000">1 km</option><option value="3000" selected>3 km</option></select></label></div>
+      <div class="real-nearby-center"><p id="realNearbyCenterLabel"></p><button type="button" id="realNearbyGps" hidden>GPS 위치 켜기</button></div>
+      <button type="button" id="realNearbySearch" class="button primary full real-nearby-search">주변 찾기</button>
+      <p class="real-nearby-disclosure">버튼을 누르면 선택한 위치 좌표를 Photon에 전송합니다. 현재 GPS는 직접 켠 경우에만 사용합니다.</p>
+      <p id="realNearbyStatus" class="real-nearby-status" role="status" aria-live="polite">위치와 반경을 확인하고 주변 찾기를 눌러주세요.</p>
+      <p id="realNearbyQueryLabel" class="real-nearby-query-label" hidden></p>
+      <ul id="realNearbyResults" class="real-nearby-results" aria-label="주변 시설 검색 결과"></ul>
+      <p id="realNearbyAttribution" class="real-nearby-attribution"></p>
+      <div class="real-nearby-truth"><strong>주차 공간은 교통량과 다릅니다</strong><p>전국 지도 등록 시설을 검색합니다. 잔여 면수는 데이터를 제공하는 주차장만 확인할 수 있습니다. 교통량만으로 빈자리를 판단하지 않습니다. 현재 교통 데이터는 미연결이며, 현장 상황은 보고값과 달라질 수 있습니다.</p></div>
+      <details class="real-nearby-connection"><summary>유가 · 주차 정보 연결 상태</summary><p id="realNearbyConnectionStatus">오피넷 최신 보고 유가 · 주차 운영자 잔여 면수: 미연결. 데이터 연결과 검증이 필요합니다.</p><p>주유소 위치와 주차장 위치는 지도 데이터입니다. 최신 보고 가격·잔여 면수가 없으면 추정 수치를 표시하지 않습니다. 서울 등 제공 지역의 주차 데이터 연결을 준비했습니다.</p><button type="button" id="realNearbyConnection">연결 상태 확인</button></details>
+    </div>
+  </section>
+  <section class="real-turn-card" aria-label="다음 회전 안내">
+    <span id="realTurnSymbol" aria-hidden="true">↱</span>
+    <div class="real-turn-content"><span id="realGuidanceMode" class="real-guidance-mode">길 안내 준비</span><strong id="realTurnDistance">목적지 선택</strong><p id="realTurnCue">경로를 찾고 편하게 출발하세요.</p><small id="realTrackingQuality">GPS 연결 후 실제 위치로 안내합니다.</small></div>
+  </section>
+  <div class="real-location-chip" id="realGpsChip"><i></i><span id="realGpsStatus">GPS 꺼짐</span><span id="realAccuracy">정확도 -</span></div>
+  <div class="real-map-style" role="group" aria-label="지도 종류"><div class="real-map-style-buttons"><button type="button" id="realMapStyleRoad" aria-pressed="true">일반지도</button><button type="button" id="realMapStyleSatellite" aria-pressed="false" aria-describedby="realMapStyleNotice">기본 위성</button><button type="button" id="realMapStyleHighRes" class="real-map-hd" aria-pressed="false" aria-describedby="realMapConfigStatus" disabled>선명한 위성 <small id="realMapHighResState">연결 필요</small></button></div><button type="button" id="realMapSettings" class="real-map-setup-button" aria-controls="realMapConfig" aria-expanded="false">지도 연결 설정</button><p id="realMapStyleNotice" hidden>위성 2025 / 원본 10m<br>실시간 영상 아님</p></div>
+  <section id="realMapConfig" class="real-map-config" aria-label="지도 연결 설정" hidden><div class="real-map-config-heading"><h2>선명한 위성지도 연결</h2><button type="button" id="realMapConfigClose" class="real-nearby-close" aria-label="지도 연결 설정 닫기">×</button></div><p>브이월드 인증키를 서버에 설정하면 고해상도 위성지도를 사용할 수 있습니다. 기본 위성은 원본 10m 영상으로 확대하면 흐리게 보입니다.</p><p id="realMapConfigStatus" role="status">연결 확인 전입니다. 키를 설정한 뒤 상태를 확인하세요.</p><button type="button" id="realMapConfigCheck" class="button primary full">연결 상태 확인</button><a href="https://www.vworld.kr/" target="_blank" rel="noopener">브이월드에서 인증키 발급</a></section>
+  <p id="realSatelliteCredit" class="real-satellite-credit" hidden></p>
+  <div class="real-map-toolbar" aria-label="지도 보기 설정"><button id="realFollow" class="real-map-button real-follow-button" title="현재 위치 따라가기" aria-label="현재 위치 따라가기">현재 위치 따라가기</button><button id="realFit" class="real-map-button real-fit-button" title="전체 경로 보기" aria-label="전체 경로 보기">전체 경로</button></div>
+  <section class="real-eta-sheet" aria-label="경로와 길 안내 시작">
+    <div class="real-sheet-handle" aria-hidden="true"></div>
+    <div class="real-trip-overview"><div class="real-eta-metric"><strong id="realEtaValue">-</strong><span id="realEtaUnit">분</span></div><div class="real-arrival"><strong id="realArrivalTime">목적지까지, 나에게 맞게</strong><span id="realDistanceValue">실제 도로 경로를 찾아보세요</span></div><span class="real-traffic-pill">교통 미반영</span></div>
+    <div class="real-gps-controls"><button id="realGpsToggle" class="button secondary">GPS 위치 켜기</button><button id="realStart" class="button primary" disabled>GPS 길 안내 시작</button><button id="realStop" class="button ghost" disabled aria-label="GPS와 길 안내 종료">종료</button></div>
+    <details class="real-route-details" id="realRouteDetails"><summary><span>경로 상세 · 안내 순서</span><span class="real-details-summary" id="realRouteSummary">선택한 경로 없음</span><span>⌃</span></summary>
+      <div class="real-details-scroll"><div class="real-details-heading"><h2>선택한 경로</h2><span id="realProviderLabel">OSRM · 교통 미반영</span></div><div id="realRouteOptions"></div><button id="realReroute" class="button secondary full" disabled>현재 위치로 재탐색</button><p class="real-editor-note">경로 이탈 시 위치를 확인하고 직접 재탐색하세요.</p><h3 class="real-steps-title">회전 안내 목록</h3><ol id="realSteps" class="real-step-list"></ol>
+        <details class="real-privacy"><summary>지도·GPS 데이터 사용 안내</summary><p>검색 버튼·Enter를 누르면 주소·장소 검색어를 Photon에 전송합니다. 검색어와 검색 결과는 앱의 현재 화면 메모리에서만 사용하며 파일에 저장하지 않습니다. 외부 제공자는 요청을 기록할 수 있습니다.</p><p>일반지도 타일은 OpenStreetMap, 위성지도 영상은 EOX에서 가져옵니다. 선택한 지도 종류와 현재 표시 영역만 요청하며 GPS로 이동한 지도 영역도 해당 서비스에 전달됩니다. 위성 영상은 2025년 합성 영상으로 실시간 주차·교통을 보여주지 않습니다. 검색 결과 선택·경로 탐색·재탐색을 직접 누를 때 좌표를 OSRM 서버로 전송합니다. 위치 추적은 기기 안에서 처리하고 앱에 저장하지 않습니다.</p><p>GPS 권한은 사용자가 직접 허용합니다. 노트북에서는 위치 오차가 클 수 있습니다. 다른 화면으로 이동하거나 창을 숨기면 GPS를 중지합니다. 실제 차량용으로 검증하지 않았으며 실시간 교통·도로 통제·안전 운행 정보는 미연결입니다.</p><p>지도·검색 데이터: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a><br>검색: <a href="https://github.com/komoot/photon" target="_blank" rel="noopener">Photon</a><br>경로: <a href="https://project-osrm.org/" target="_blank" rel="noopener">OSRM</a><br>위성: <a href="https://s2maps.eu/" target="_blank" rel="noopener">Sentinel-2 cloudless by EOX</a><br>비상업용 시제품</p></details>
+      </div>
+    </details>
+  </section>
+  <p id="realStatus" class="real-status" role="status">지도에서 목적지를 선택하고 경로를 찾아보세요.</p>
+  <div id="realMapError" class="real-map-error" role="status" hidden></div><div id="realServerNotice" class="real-server-notice" hidden>실제 지도·GPS는 소스 묶음의 시작 파일을 실행해 이용하세요.</div>
+</section>

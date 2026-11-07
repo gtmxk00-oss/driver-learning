@@ -1,0 +1,24 @@
+plugins { id 'com.android.library' }
+android {
+    namespace 'kr.routememory.shared'
+    compileSdk 35
+    defaultConfig { minSdk 29 }
+    buildFeatures { buildConfig true }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            // Optional native-layout artifact generation, separate from regression checks.
+            if (System.getenv('ROUTE_MEMORY_RENDER_UI') != '1') exclude '**/RoadUiRenderTest.class'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    api platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+    api project(':core')
+    api 'androidx.car.app:app:1.7.0'
+    implementation 'androidx.core:core:1.13.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.car.app:app-testing:1.7.0'
+}

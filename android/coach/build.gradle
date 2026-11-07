@@ -1,0 +1,19 @@
+plugins { id 'com.android.library' }
+android {
+    namespace 'kr.routememory.coach'
+    compileSdk 35
+    defaultConfig { minSdk 29 }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            // Optional native-layout artifact generation, separate from regression checks.
+            if (System.getenv('ROUTE_MEMORY_RENDER_UI') != '1') exclude '**/CoachRenderTest.class'
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    api project(':core')
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+}

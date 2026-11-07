@@ -1,0 +1,74 @@
+/* Design layer over the kept layout: type, shell, controls and surfaces. Colours and faces come only from tokens.css. */
+html,body{overflow-x:clip}
+body{font-family:var(--font);font-weight:var(--weight-body);color:var(--ink);background-color:var(--canvas);background-image:var(--glow);background-repeat:no-repeat;background-attachment:fixed;-webkit-font-smoothing:antialiased;word-break:keep-all}
+button,input,select,textarea{font-family:var(--font)}
+h1,h2,h3,h4{font-weight:var(--weight-head);letter-spacing:-.022em;color:var(--ink);overflow-wrap:break-word;min-width:0}
+strong,b{font-weight:var(--weight-strong)}
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:2px;transition:none}
+::selection{background:var(--accent-veil)}
+
+/* Shell */
+.sidebar,.map-mode .sidebar{background:var(--surface);border-right:1px solid var(--rule);box-shadow:none}
+.brand,.map-mode .brand{color:var(--ink);font-weight:var(--weight-head);letter-spacing:-.02em}
+.brand-icon,.map-mode .brand-icon{background:var(--accent);color:var(--accent-ink);border-radius:12px;box-shadow:none}
+.brand-icon svg{stroke:currentColor}
+.nav-item,.map-mode .nav-item{color:var(--ink-3);font-weight:560;border-radius:var(--radius-control);transition:background-color var(--dur-micro),color var(--dur-micro)}
+.nav-item:hover,.map-mode .nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item.active,.map-mode .nav-item.active{background:var(--surface-2);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.nav-item.active svg,.map-mode .nav-item.active svg{color:var(--accent-text)}
+.sidebar-footer{color:var(--ink-3);font-size:12px}
+.topbar{border-bottom:1px solid var(--rule)}
+.breadcrumb{display:none}
+.top-actions{gap:8px}
+.icon-button,.map-mode #soundToggle,.mode-toggle{background:var(--surface);color:var(--ink-2);border:1px solid var(--rule);border-radius:var(--radius-control);min-height:40px;padding:8px 12px;font-weight:560;box-shadow:none;transition:background-color var(--dur-micro),color var(--dur-micro)}
+.icon-button:hover,.mode-toggle:hover{background:var(--surface-2);color:var(--ink)}
+.icon-button[aria-pressed="true"]{color:var(--accent-text);border-color:var(--accent)}
+.mode-toggle{display:inline-flex;align-items:center;gap:6px}
+.mode-toggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8}
+.map-mode .topbar .mode-toggle{min-height:44px}
+
+/* Page head: the screen's name, one line under it, and the honest mode tag */
+.page-head h1{font-size:clamp(26px,2.3vw,34px);line-height:1.18;letter-spacing:-.03em}
+.page-head p{color:var(--ink-2);font-size:15px}
+.demo-label{background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:var(--radius-control);box-shadow:none;font-weight:600}
+.demo-label small{color:var(--ink-3);font-weight:var(--weight-body)}
+
+/* Controls */
+.button{border-radius:var(--radius-control);font-weight:650;transition:background-color var(--dur-micro),color var(--dur-micro),border-color var(--dur-micro)}
+.button.primary,button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);box-shadow:none}
+.button.primary:hover,button.primary:hover{background:var(--accent-hover)}
+.button.secondary{background:var(--surface-2);color:var(--ink);border:1px solid var(--rule)}
+.button.secondary:hover{background:var(--surface-3)}
+.button:disabled,button:disabled{opacity:.55;cursor:not-allowed}
+input,select,textarea{background:var(--surface);color:var(--ink);border-color:var(--rule);border-radius:var(--radius-control)}
+input::placeholder,textarea::placeholder{color:var(--ink-3)}
+
+/* Surfaces: one radius per level, an edge instead of a cloud of shadow */
+.card,.panel,.history-stat,.guide-card,.personal-card,.routes-section,.experience-note,.nav-planner,.nav-route-sidebar,.traffic-panel,.brief-section,.insights>section{border-radius:var(--radius-card);border-color:var(--rule);box-shadow:none}
+dialog{background:var(--surface);color:var(--ink);border:1px solid var(--rule);border-radius:var(--radius-card)}
+dialog::backdrop{background:var(--scrim)}
+.pill,.nav-place-chips button{border-radius:999px}
+.toast{background:var(--strong);color:var(--on-strong)}
+.notice{background:var(--warn-soft);color:var(--ink);border-color:var(--warn)}
+.card-eyebrow,.section-heading small{color:var(--ink-3);letter-spacing:0;text-transform:none;font-size:13px}
+.history-stat strong,.lead-metric strong,.journey-stat strong{font-variant-numeric:tabular-nums;font-weight:var(--weight-head);letter-spacing:-.03em}
+
+/* The orange is the action, the selection and the voice; figures and heads are ink */
+.personal-card h2,.lead-metric strong,.history-stat strong,.journey-stat strong{color:var(--ink)}
+.coach-app{color:var(--ink)}
+
+/* Labels are the body face, untracked, sentence case */
+.brand small,.tiny-label,.breadcrumb,.eyebrow,.sim-title,.map-labels .river-label,.map-disclaimer,.step-number,.card-eyebrow{letter-spacing:0;text-transform:none}
+.progress-track span,.lead-comparison i{transition:none}
+dialog::backdrop{backdrop-filter:none}
+.history-stat strong,.journey-stat strong{font-variant-numeric:tabular-nums}
+.review-icon{background:none;color:var(--ok)}
+.simulator{box-shadow:none;color:var(--sim-ink)}
+.sim-top,.sim-top :where(span,b,small,a,button){color:var(--sim-ink-2)}
+
+/* Map controls from the bundled library follow the same surfaces */
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--surface);color:var(--ink);border-color:var(--rule)}
+.leaflet-container .leaflet-control-attribution{background:var(--veil);color:var(--ink-2)}
+.leaflet-container .leaflet-control-attribution a{color:var(--accent-text)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:0s!important;animation-duration:0s!important;animation-iteration-count:1!important}}
