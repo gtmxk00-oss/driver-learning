@@ -13,7 +13,7 @@
 | 동반앱 실제 위치 모드 (PC, Android) | 구현. 이 기기의 GPS로 위치·속도·정확도를 실시간 표시하고, 저장한 기억 지점에 다가가면 음성으로 알립니다. 방향지시등·내비게이션 정보는 아직 받지 못합니다 |
 | 실제 지도, 장소 검색, 경로, 주변 주유소·주차장, 위성지도 (PC, Android 시제품) | 구현, 공개 지도 서비스 사용. 실유가·주차 잔여 면수·고화질 항공영상·실시간 교통은 연결 전 |
 | Pleos Connect SDK 연동 (Vehicle 2.3.2, NaviHelper 3.0.5) | 구현. 방향지시등·기어는 Vehicle SDK, 다음 회전·재탐색·주의 지점·내비 상태는 NaviHelper SDK에서 받아 판단 규칙(`GuidanceSession`)에 연결했습니다. 단위 테스트 통과 |
-| Pleos Connect Emulator v2.1.0 (Android 14, API 34) | release APK 설치·실행 확인. 차량 연동 화면에서 Vehicle SDK·NaviHelper SDK 모두 연결되고, Virtual Console로 넣은 방향지시등(좌·우·끄기)과 기어(P·D)가 그대로 수신됩니다. 내비 경로를 실제로 시작해 다음 회전(TBT)을 받는 것은 아직 확인하지 못했습니다 |
+| Pleos Connect Emulator v2.1.0 (Android 14, API 34) | release APK 설치·실행 확인. 차량 연동 화면에서 Vehicle SDK·NaviHelper SDK 모두 연결되고, Virtual Console로 넣은 방향지시등(좌·우·끄기)과 기어(P·D)가 그대로 수신됩니다. 내장 내비에 목적지를 잡으면 다음 회전과 남은 거리("좌회전 · 80m")가 NaviHelper를 통해 화면에 표시됩니다. 다만 이 에뮬레이터의 내비는 Android GPS(`geo fix`)나 Virtual Console 속도를 따라 움직이지 않아, 회전을 지나친 뒤 재탐색 → 놓침 질문으로 이어지는 흐름은 실제 이벤트로 확인하지 못했고 단위 테스트와 가상 시연으로만 검증된 상태입니다 |
 | 실차 구동 | 미검증 |
 | 주행 중 동작 | 차량 연동 화면만 DO(distractionOptimized)를 선언하고 자기 태스크로 열려서, 기어를 D로 바꿔도 Pleos 홈 화면이 차단하지 않는 것을 에뮬레이터에서 확인했습니다. 시연·실제 위치 화면은 주행 상태가 되면 시스템이 차단하고 정차하면 돌아옵니다. CarUxRestrictions에 따른 화면 축소는 아직 없습니다 |
 
