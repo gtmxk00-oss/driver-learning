@@ -75,3 +75,53 @@
 .coach-answers{display:flex;gap:.8cqw;margin-top:1.2cqw}
 .coach-answers button{flex:1;min-height:3.8cqw;border:0;border-radius:1cqw;background:var(--surface);color:var(--ink);font:inherit;font-size:1.9cqw;font-weight:700;cursor:pointer}
 .coach-answers .primary{background:var(--accent);color:var(--accent-ink)}
+/* Car-link mode: a self-drawn mock of the car's home screen (status bar, cluster, dock) around the app, so the PC shows what the car shows. No vendor artwork. */
+.coach-guidance .coach-stage{background:#f3f3f5;color:#1b1b1f}
+.ivi{position:absolute;inset:0;display:grid;grid-template-rows:4.4cqw 1fr 5.2cqw;font-family:var(--font);color:#1b1b1f}
+.ivi-top{display:flex;align-items:center;gap:1.3cqw;padding:0 1.6cqw;background:#fff;border-bottom:1px solid #e3e3e8;font-size:1.5cqw}
+.ivi-top time{font-weight:600;font-variant-numeric:tabular-nums}
+.ivi-pill{flex:1;margin:0 1cqw;text-align:center;font-style:normal;font-size:1.2cqw;font-weight:700;color:#5c5c66}
+.ivi-driver{display:grid;place-items:center;width:2.6cqw;height:2.6cqw;border:1px solid #c9c9d0;border-radius:50%;font-size:1.2cqw;font-weight:700;color:#b14dd1}
+.ivi-glyph{display:inline-block;width:1.7cqw;height:1.7cqw;border:.18cqw solid #1b1b1f;border-radius:.4cqw;opacity:.8}
+.ivi-glyph.lock{border-radius:.3cqw .3cqw .5cqw .5cqw}
+.ivi-glyph.search,.ivi-glyph.bt{border-radius:50%}
+.ivi-glyph.wifi{height:1cqw;border-color:#1b1b1f transparent transparent transparent;border-radius:50% 50% 0 0}
+.ivi-body{display:grid;grid-template-columns:26% 1fr;min-height:0}
+.ivi-cluster{position:relative;display:flex;flex-direction:column;min-height:0;padding:1.2cqw 1.4cqw .6cqw;background:#fff;border-right:1px solid #e3e3e8}
+.ivi-cluster-top{display:flex;justify-content:space-between;align-items:center;font-size:1.35cqw;font-weight:600;color:#6b6b74}
+.ivi-fuel i{display:inline-block;width:2.8cqw;height:1cqw;margin-right:.4cqw;background:#1b1b1f;border-radius:.15cqw;vertical-align:middle}
+.ivi-prnd b{margin-left:.45cqw;padding:.1cqw .35cqw;color:#9a9aa3;font-weight:600}
+.ivi-prnd b.on{background:#1b1b1f;color:#fff;border-radius:.3cqw}
+.ivi-signals{display:flex;justify-content:space-between;padding:1.2cqw 1.2cqw 0}
+.ivi-arrow{width:0;height:0;border-top:1cqw solid transparent;border-bottom:1cqw solid transparent;opacity:.15}
+.ivi-arrow.left{border-right:1.6cqw solid #1f9d4f}
+.ivi-arrow.right{border-left:1.6cqw solid #1f9d4f}
+.ivi-arrow.on{opacity:1;animation:ivi-blink .8s steps(1) infinite}
+@keyframes ivi-blink{50%{opacity:.15}}
+.ivi-car{flex:1;min-height:0;width:58%;margin:.4cqw auto}
+.ivi-quick{display:flex;justify-content:space-around;padding:.6cqw 0 .2cqw;border-top:1px solid #ececf0}
+.ivi-quick i{width:2.2cqw;height:1.6cqw;border:.16cqw solid #1b1b1f;border-radius:.4cqw;opacity:.7}
+.ivi-task{position:relative;display:flex;flex-direction:column;min-height:0;background:var(--sim-bg)}
+.ivi-close{position:absolute;left:.8cqw;top:.7cqw;z-index:3;width:2.2cqw;height:2.2cqw;border-radius:.4cqw;background:#fff}
+.ivi-close::before,.ivi-close::after{content:'';position:absolute;left:50%;top:50%;width:1.3cqw;height:.16cqw;background:#1b1b1f;transform:translate(-50%,-50%) rotate(45deg)}
+.ivi-close::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.ivi-badge{padding:.6cqw 1cqw .6cqw 3.6cqw;background:#f3f3f5;color:#1b1b1f;font-size:1.05cqw;font-weight:700}
+.ivi-screen{position:relative;inset:auto;flex:1;min-height:0}
+.ivi-screen .coach-app{padding-top:2.4cqw}
+.ivi-dock{display:flex;align-items:center;justify-content:space-between;padding:0 2cqw;background:#101114;color:#fff}
+.ivi-temp{font-size:1.9cqw;font-weight:600;line-height:1}
+.ivi-temp small{display:block;margin-top:.2cqw;font-size:.9cqw;font-weight:700;color:#2fd36b}
+.ivi-apps{display:flex;gap:1.2cqw}
+.ivi-apps i{width:2.6cqw;height:2.6cqw;border-radius:.5cqw;background:#2a2b30}
+.ivi-apps i.on{background:#0f6a46}
+.coach-fullscreen .ivi-screen{bottom:auto}
+/* Inside the mock car screen the app has less height, so its card is set a little tighter and never overlaps itself. */
+.ivi-screen .coach-app{gap:1cqw;padding:1.4cqw 2.2cqw 1.6cqw;overflow:hidden}
+.ivi-screen .coach-app-brand{font-size:2.1cqw}
+.ivi-screen .coach-tag{font-size:1.7cqw}
+.ivi-screen .coach-chips span{font-size:1.3cqw}
+.ivi-screen .coach-status{flex:1 1 auto;min-height:auto;padding:1.4cqw}
+.ivi-screen .coach-status p{font-size:2.1cqw}
+.ivi-screen .coach-answers{margin-top:1cqw}
+.ivi-screen .coach-answers button{min-height:3.1cqw;font-size:1.6cqw}
+.ivi-screen .coach-facts div{font-size:1.4cqw}
