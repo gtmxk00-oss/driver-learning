@@ -27,6 +27,10 @@ public final class DriveCoach {
     public static final int SIGNAL_SAMPLES=5; static final double SIGNAL_RATE_MIN=0.3;
     /** Under load (fast, or another turn right behind) the sentence is cut to its core (AdaptiveVoice, CHI 2024). */
     public static final int BRIEF_SPEED_KPH=80,BRIEF_GAP_METERS=500;
+    /** A road whose limit is this high is a fast road: the sentence is cut to its core there too. */
+    public static final int BRIEF_LIMIT_KPH=80;
+    /** Rain (wiper on) and night (low beam on) push the decision distance out: stopping distances grow and signs are read later. */
+    static final double RAIN_FACTOR=1.25,NIGHT_FACTOR=1.15;
     public static final String LOWER_QUESTION="같은 유형을 세 번 잘 지나셨어요. 이 유형 알림을 줄일까요?";
     private DriveCoach() {}
 
@@ -58,6 +62,8 @@ public final class DriveCoach {
     public static final class Context {
         public int meters; public Signal signal=Signal.OFF; public boolean passenger;
         public int speedKph=-1; public Familiarity familiarity=Familiarity.UNKNOWN; public boolean brief;
+        /** Wiper on, low beam on: the car's own word on rain and night. */
+        public boolean rain,night;
         public Context(int meters,Signal signal,boolean passenger){this.meters=meters;this.signal=signal;this.passenger=passenger;}
     }
     public static final class Decision {
@@ -65,8 +71,8 @@ public final class DriveCoach {
         Decision(Action action,String reason,String speech,int limit){this.action=action;this.reason=reason;this.speech=speech;this.limit=limit;}
     }
     public static final class Review {
-        public final TurnType type; public final boolean confirmed,becameWeak;
-        Review(TurnType type,boolean confirmed,boolean becameWeak){this.type=type;this.confirmed=confirmed;this.becameWeak=becameWeak;}
+        public final String id; public final TurnType type; public final boolean confirmed,becameWeak;
+        Review(String id,TurnType type,boolean confirmed,boolean becameWeak){this.id=id;this.type=type;this.confirmed=confirmed;this.becameWeak=becameWeak;}
     }
     public static final class Place {
         public final String id,label;
@@ -89,6 +95,8 @@ public final class DriveCoach {
         final Map<String,Set<String>> destPlaces=new HashMap<>(); final Map<String,String> placeLabels=new HashMap<>();
         /** Road cells (about 100 m) and on how many trips each was driven. */
         final Map<String,Integer> roadCells=new HashMap<>();
+        /** Where a remembered place is, when the car knew its position at the time; for the proximity alerts. */
+        final Map<String,double[]> placeCoords=new HashMap<>();
         public Profile(String id,String name,DriverType driverType){this.id=id;this.name=name;this.driverType=driverType;}
         public int misses(TurnType type){return typeMisses.getOrDefault(type,0);}
         public int placeCount(){return places.size();}
@@ -108,9 +116,13 @@ public final class DriveCoach {
         return Math.min(p.driverType.maxMeters,start+Math.min(MAX_STEPS,p.misses(turn.type))*STEP_METERS);
     }
     /** The decision distance for the speed the car is doing and the road it is on; -1 speed means unknown. */
-    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity) {
+    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity){return decisionMeters(p,turn,speedKph,familiarity,false,false);}
+    /** As above, further out in rain (wiper on) and at night (low beam on). */
+    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity,boolean rain,boolean night) {
         double factor=speedKph<0?1:Math.max(SPEED_MIN,Math.min(SPEED_MAX,speedKph/(double)SPEED_REF_KPH));
         if(familiarity==Familiarity.NEW)factor*=NEW_ROAD_FACTOR;
+        if(rain)factor*=RAIN_FACTOR;
+        if(night)factor*=NIGHT_FACTOR;
         int meters=(int)Math.round(decisionMeters(p,turn)*factor);
         return Math.max(100,Math.min(p.driverType.maxMeters*2,meters));
     }
@@ -127,7 +139,7 @@ public final class DriveCoach {
     }
     public static Decision decide(Profile p,Turn turn,int meters,Signal signal,boolean passenger){return decide(p,turn,new Context(meters,signal,passenger));}
     public static Decision decide(Profile p,Turn turn,Context c) {
-        int limit=decisionMeters(p,turn,c.speedKph,c.familiarity);
+        int limit=decisionMeters(p,turn,c.speedKph,c.familiarity,c.rain,c.night);
         boolean remembered=remembers(p,turn.id);
         if(!isWeak(p,turn.type)&&!remembered)return new Decision(Action.NONE,"not-weak","",limit);
         // A road driven many times is known; only a spot actually missed there is worth a word.
@@ -163,6 +175,15 @@ public final class DriveCoach {
         return new Decision(Action.SPEAK,"memory-point","헷갈렸던 지점입니다. 미리 확인하세요.",0);
     }
     public static void addMemo(Profile p,String placeId){p.places.add(placeId);}
+    /** Where a remembered place is; kept so the car can be told when it comes near without a route. */
+    public static void placeCoord(Profile p,String placeId,double lat,double lon){if(placeId!=null&&!Double.isNaN(lat)&&!Double.isNaN(lon))p.placeCoords.put(placeId,new double[]{lat,lon});}
+    public static double[] placeCoord(Profile p,String placeId){double[] c=p.placeCoords.get(placeId);return c==null?null:new double[]{c[0],c[1]};}
+    /** Every remembered place that has a position: id to [lat, lon]. */
+    public static Map<String,double[]> placeCoords(Profile p) {
+        Map<String,double[]> out=new HashMap<>();
+        for(Map.Entry<String,double[]> e:p.placeCoords.entrySet())if(remembers(p,e.getKey()))out.put(e.getKey(),new double[]{e.getValue()[0],e.getValue()[1]});
+        return out;
+    }
     public static void labelPlace(Profile p,String placeId,String label){if(label!=null&&!label.trim().isEmpty())p.placeLabels.put(placeId,label.trim().replace('\t',' ').replace('\n',' '));}
     public static String placeLabel(Profile p,String placeId) {
         String label=p.placeLabels.get(placeId);
@@ -201,7 +222,7 @@ public final class DriveCoach {
             if(item.detail!=null)labelPlace(p,item.id,item.detail+" "+item.type.label);
             rememberFor(p,destination,item.id);
         }
-        return new Review(item.type,confirmed,!wasWeak&&isWeak(p,item.type));
+        return new Review(item.id,item.type,confirmed,!wasWeak&&isWeak(p,item.type));
     }
     /** Returns true when the driver may be offered to lower this weak type. */
     public static boolean notePass(Profile p,Turn turn,int signalOnMeters) {
@@ -228,10 +249,14 @@ public final class DriveCoach {
         return n==0?Familiarity.NEW:n<FAMILIAR_AFTER?Familiarity.KNOWN:Familiarity.FAMILIAR;
     }
     /** One sentence when the car is parked after a trip; nothing when there was nothing to watch. */
-    public static String summarySpeech(int watched,int passed,int missCandidates,int signalOff) {
+    public static String summarySpeech(int watched,int passed,int missCandidates,int signalOff){return summarySpeech(watched,passed,missCandidates,signalOff,-1);}
+    /** As above, opening with the trip's distance when the odometer gave one (negative when unknown). */
+    public static String summarySpeech(int watched,int passed,int missCandidates,int signalOff,double tripKm) {
         if(watched==0&&signalOff==0)return "";
         StringBuilder b=new StringBuilder();
-        if(watched>0)b.append("오늘 지켜본 회전 ").append(watched).append("곳 중 잘 지난 곳 ").append(passed).append(", 놓침 후보 ").append(missCandidates).append("입니다.");
+        boolean km=tripKm>=0.5;
+        if(km)b.append("오늘 ").append(tripKm>=10?String.valueOf(Math.round(tripKm)):String.format(java.util.Locale.ROOT,"%.1f",tripKm)).append("km를 달렸어요. ");
+        if(watched>0)b.append(km?"지켜본 회전 ":"오늘 지켜본 회전 ").append(watched).append("곳 중 잘 지난 곳 ").append(passed).append(", 놓침 후보 ").append(missCandidates).append("입니다.");
         if(signalOff>0)b.append(watched>0?" ":"").append("방향지시등 없이 지난 회전이 ").append(signalOff).append("번 있었어요.");
         return b.toString();
     }
@@ -248,6 +273,7 @@ public final class DriveCoach {
         for(Map.Entry<String,Set<String>> e:p.destPlaces.entrySet())for(String id:e.getValue())b.append("dest ").append(e.getKey().replace('\t',' ')).append('\t').append(id.replace('\n',' ')).append('\n');
         for(Map.Entry<String,String> e:p.placeLabels.entrySet())b.append("label ").append(e.getKey().replace('\t',' ')).append('\t').append(e.getValue()).append('\n');
         for(Map.Entry<String,Integer> e:p.roadCells.entrySet())b.append("cell ").append(e.getKey()).append(' ').append(e.getValue()).append('\n');
+        for(Map.Entry<String,double[]> e:p.placeCoords.entrySet())b.append("coord ").append(e.getKey().replace('\t',' ')).append('\t').append(e.getValue()[0]).append('\t').append(e.getValue()[1]).append('\n');
         return b.toString();
     }
     /** Reads a snapshot back; lines it does not understand are skipped rather than trusted. */
@@ -264,6 +290,7 @@ public final class DriveCoach {
                 else if(line.startsWith("dest ")){String[] f=line.substring(5).split("\t",2);if(f.length==2&&!f[0].isEmpty()&&!f[1].isEmpty())rememberFor(p,f[0],f[1]);}
                 else if(line.startsWith("label ")){String[] f=line.substring(6).split("\t",2);if(f.length==2&&!f[0].isEmpty())labelPlace(p,f[0],f[1]);}
                 else if(line.startsWith("cell ")){String[] f=line.split(" ",3);int n=Integer.parseInt(f[2]);if(n>0&&f[1].matches("-?\\d+,-?\\d+"))p.roadCells.put(f[1],n);}
+                else if(line.startsWith("coord ")){String[] f=line.substring(6).split("\t",3);if(f.length==3&&!f[0].isEmpty())placeCoord(p,f[0],Double.parseDouble(f[1]),Double.parseDouble(f[2]));}
             } catch(RuntimeException ignored){}
         }
     }
@@ -282,7 +309,7 @@ public final class DriveCoach {
     /** Erases what this profile learned. Other profiles keep theirs. */
     public static void clearMemory(Profile p) {
         p.typeMisses.clear();p.passStreak.clear();p.chosenWeak.clear();p.places.clear();p.pending.clear();
-        p.destPlaces.clear();p.placeLabels.clear();p.roadCells.clear();
+        p.destPlaces.clear();p.placeLabels.clear();p.roadCells.clear();p.placeCoords.clear();
         p.habitMeters=0;p.habitSamples=0;p.signalTurns=0;p.signalOnTurns=0;
     }
 }

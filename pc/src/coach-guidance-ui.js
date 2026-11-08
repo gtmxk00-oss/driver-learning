@@ -11,7 +11,7 @@
   const NOTE='Android 차량 연동 화면과 같은 규칙입니다. 차량 신호는 Pleos Virtual Console처럼 아래 가상 차량 콘솔로 넣고, 공식 에뮬레이터·실차에서는 Vehicle SDK와 NaviHelper SDK 이벤트, 차량 속도, FusedLocation 위치, SpeechToText 음성이 이 자리에 들어옵니다.';
   const SIGNALS={off:'꺼짐',left:'왼쪽',right:'오른쪽'};
   const FAMILIAR={unknown:'모름',new:'처음 가는 길','known':'몇 번 가 본 길',familiar:'익숙한 길'};
-  let saved={driverType:'general',memory:{}},session,spoken=null,flash=null,timer=0,steps=[],listening=null;
+  let saved={driverType:'general',memory:{}},session,spoken=null,flash=null,timer=0,steps=[],listening=null,beltOn=true;
 
   // What the driver confirmed stays in this browser, per driver type, as on the device.
   function load(){
@@ -117,7 +117,7 @@
     const row=(dt,dd)=>'<div><dt>'+esc(dt)+'</dt><dd>'+esc(dd)+'</dd></div>';
     const weak=Object.keys(C.turnTypes).filter(k=>C.isWeak(p,k)).map(k=>C.turnTypes[k].label);
     const speedText=session.speedKph>=0?session.speedKph+' km/h':'모름';
-    const metrics=row('방향지시등',SIGNALS[session.signal]||session.signal)+row('기어',session.parked?'P':'D')+row('속도',speedText)+row('내비 상태',session.navigating?'안내 중'+(session.destination?' · '+session.destination:''):'없음')+row('길 익숙도',FAMILIAR[session.familiarity]||session.familiarity)+row('Vehicle · NaviHelper SDK','가상 콘솔');
+    const metrics=row('방향지시등',SIGNALS[session.signal]||session.signal)+row('기어',session.parked?'P':'D')+row('속도',speedText)+row('차량 신호',(session.brake?'브레이크 밟음':'브레이크 뗌')+' · 핸들 '+Math.round(session.steerDeg||0)+'° · '+(session.rain?'와이퍼 켜짐':'와이퍼 꺼짐')+' · '+(session.night?'전조등 켜짐':'전조등 꺼짐')+(session.tripKm>=0?' · 주행 '+session.tripKm+' km':''))+row('도로',(session.roadLimitKph>=0?'제한속도 '+session.roadLimitKph+' km/h':'제한속도 모름')+(session.arrived?' · 도착함':''))+row('내비 상태',session.navigating?'안내 중'+(session.destination?' · '+session.destination:''):'없음')+row('길 익숙도',FAMILIAR[session.familiarity]||session.familiarity)+row('Vehicle · NaviHelper SDK','가상 콘솔');
     const yes=session.lowerAsked?'네, 줄여 주세요':'네, 놓쳤어요';
     const answers=status.answers?'<div class="coach-answers"><button type="button" class="primary" data-answer="yes">'+yes+'</button><button type="button" data-answer="no">아니요</button></div>':'';
     // The app sits inside a self-drawn mock of the car's home screen (status bar, cluster, dock), so the PC shows the
@@ -139,6 +139,10 @@
     for(const b of $('coachStage').querySelectorAll('[data-answer]'))b.addEventListener('click',()=>answer(b.dataset.answer==='yes'));
     for(const [id,active] of [['guidanceSignalOff',session.signal==='off'],['guidanceSignalLeft',session.signal==='left'],['guidanceSignalRight',session.signal==='right'],['guidanceGearP',session.parked],['guidanceGearD',!session.parked],['guidanceNav',session.navigating]])$(id)?.classList.toggle('on',active);
     $('guidanceNav').textContent=session.navigating?'내비 안내 중':'내비 안내 없음';
+    if($('guidanceBrake'))$('guidanceBrake').textContent=session.brake?'브레이크 떼기':'브레이크 밟기';
+    if($('guidanceWiper'))$('guidanceWiper').textContent=session.rain?'와이퍼 끄기':'와이퍼 켜기';
+    if($('guidanceLowBeam'))$('guidanceLowBeam').textContent=session.night?'전조등 끄기':'전조등 켜기';
+    if($('guidanceBelt'))$('guidanceBelt').textContent=beltOn?'벨트 풀기':'벨트 매기';
     $('guidanceDriver').value=p.driverType;$('guidancePassenger').checked=session.passenger;
     if($('guidanceSpeedOut'))$('guidanceSpeedOut').textContent=(session.speedKph>=0?session.speedKph:0)+' km/h';
     $('guidanceForget').disabled=!(p.places.length||weak.length||p.pending.length||Object.keys(p.roadCells).length);
@@ -171,6 +175,16 @@
   $('guidanceMemo')?.addEventListener('click',()=>memo());
   $('guidanceMemoText')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();memo();}});
   $('guidanceVoice')?.addEventListener('click',listen);
+  // The extra car signals, as the Pleos Vehicle SDK and NaviHelper give them in the car.
+  $('guidanceBrake')?.addEventListener('click',()=>take(G.onBrake(session,!session.brake)));
+  $('guidanceWiper')?.addEventListener('click',()=>take(G.onWiper(session,!session.rain)));
+  $('guidanceLowBeam')?.addEventListener('click',()=>take(G.onLowBeam(session,!session.night)));
+  $('guidanceBelt')?.addEventListener('click',()=>{beltOn=!beltOn;take(G.onSeatBelt(session,beltOn));});
+  $('guidanceSteer')?.addEventListener('input',e=>take(G.onSteering(session,Number(e.target.value)||0)));
+  $('guidanceLimit')?.addEventListener('change',e=>take(G.onSpeedLimit(session,e.target.value===''?-1:Number(e.target.value))));
+  $('guidanceTripKm')?.addEventListener('change',e=>take(G.onTripDistance(session,e.target.value===''?-1:Number(e.target.value))));
+  $('guidanceArrive')?.addEventListener('click',()=>{if(session.navigating)setNavigating(false);take(G.onArrival(session));});
+  $('guidanceNear')?.addEventListener('click',()=>{const id=session.profile.places[session.profile.places.length-1];if(!id){note('근접 알림','기억 지점이 아직 없어요');render();return;}take(G.onProximity(session,id));});
   $('guidancePassenger')?.addEventListener('change',e=>{session.passenger=e.target.checked;render();});
   $('guidanceDriver')?.addEventListener('change',e=>{stop();save();open(e.target.value);save();render();});
   $('guidanceMiss')?.addEventListener('click',missRun);

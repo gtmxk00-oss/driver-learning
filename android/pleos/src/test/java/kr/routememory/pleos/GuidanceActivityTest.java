@@ -46,6 +46,8 @@ public class GuidanceActivityTest {
         assertTrue(shown(activity,"Vehicle SDK: 연결 전"));
         assertTrue(shown(activity,"NaviHelper SDK: 연결 전"));
         assertTrue(shown(activity,"SpeechToText SDK: 준비 전"));
+        assertTrue(shown(activity,"TextToSpeech SDK: 준비 전"));
+        assertTrue(shown(activity,"차량 신호: 모름"));
         assertTrue(shown(activity,"속도: 모름"));
         assertTrue(shown(activity,"연결 안 됨"));
     }

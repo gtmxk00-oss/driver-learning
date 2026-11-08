@@ -69,7 +69,7 @@
 .coach-console button{min-height:40px;padding:6px 12px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
 .coach-console button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .coach-console button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}
-.coach-console button:disabled{opacity:.5;cursor:default}
+.coach-console button:disabled{background:var(--surface-2);color:var(--ink-3);border-color:var(--rule);cursor:not-allowed}
 .coach-console input,.coach-console select{min-height:40px;padding:6px 10px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit}
 .coach-console input[type=checkbox]{min-height:0;width:18px;height:18px;accent-color:var(--accent)}
 .coach-answers{display:flex;gap:.8cqw;margin-top:1.2cqw}

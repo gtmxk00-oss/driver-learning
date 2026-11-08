@@ -126,6 +126,12 @@ public final class DriveCoachTest {
         check(DriveCoach.laneHint(new Turn("r",TurnType.EXIT_RIGHT),-1,300).text.equals("맨 오른쪽 차선으로"),"unknown distance: no timing");
         check(DriveCoach.laneHint(new Turn("o",TurnType.ROUNDABOUT),250,300).side==DriveCoach.LaneSide.RIGHT&&DriveCoach.laneHint(new Turn("o",TurnType.ROUNDABOUT),250,300).text.contains("속도 줄이기"),"roundabout: right lane, slow down");
         check(DriveCoach.laneHint(null,100,300).side==DriveCoach.LaneSide.ANY,"no turn, no advice");
+        // Rain and night push the decision distance out; the summary can open with the trip's distance.
+        check(DriveCoach.decisionMeters(profile(DriverType.GENERAL),left("e"),-1,DriveCoach.Familiarity.UNKNOWN,true,false)==375,"rain: 300 becomes 375");
+        check(DriveCoach.decisionMeters(profile(DriverType.GENERAL),left("e"),-1,DriveCoach.Familiarity.UNKNOWN,false,true)==345,"night: 300 becomes 345");
+        check(DriveCoach.summarySpeech(2,1,1,0,42.3).equals("오늘 42km를 달렸어요. 지켜본 회전 2곳 중 잘 지난 곳 1, 놓침 후보 1입니다."),"summary with distance");
+        check(DriveCoach.summarySpeech(0,0,0,0,42.3).isEmpty(),"nothing watched: still nothing to say");
+        check(DriveCoach.summarySpeech(1,1,0,0,3.26).startsWith("오늘 3.3km를"),"short trips keep a decimal");
         System.out.println("PASS: "+checks+" drive coach checks");
     }
 }

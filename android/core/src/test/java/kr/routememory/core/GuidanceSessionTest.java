@@ -231,6 +231,53 @@ public final class GuidanceSessionTest {
         check(copy.signalTurns==2&&copy.signalOnTurns==1,"signal counts restored");
         check(DriveCoach.placesFor(copy,"회사").size()==1&&DriveCoach.placesFor(copy,"회사").get(0).label.equals("x 왼쪽 출구"),"destination places restored");
         check(DriveCoach.familiarity(copy,DriveCoach.cellKey(37.5,127.0))==Familiarity.KNOWN&&copy.roadCellCount()==1,"road cells restored, garbage skipped");
+
+        // The extra car signals. Rain and night push the decision distance out, so the sentence comes earlier.
+        s=fresh();DriveCoach.chooseWeak(s.profile(),TurnType.EXIT_LEFT);s.onGear(false,0);
+        check(s.onTurn(exitLeft("w1"),350,0).event==Event.NONE,"350 m is outside 300 m in the dry");
+        check(s.onWiper(true,10).event==Event.SPEAK,"wiper on: 375 m reaches 350 m");
+        s=fresh();DriveCoach.chooseWeak(s.profile(),TurnType.EXIT_LEFT);s.onGear(false,0);
+        s.onTurn(exitLeft("n1"),340,0);
+        check(s.onLowBeam(true,10).event==Event.SPEAK,"low beam on: 345 m reaches 340 m");
+        check(DriveCoach.decisionMeters(s.profile(),exitLeft("x"),-1,Familiarity.UNKNOWN,true,true)==431,"rain and night together: 300*1.25*1.15");
+        // The steering wheel turning at the exit means it was taken: the reroute right after is not a miss.
+        s=fresh();s.onGear(false,0);
+        s.onTurn(exitLeft("t1"),250,1000);s.onSteering(60f,1100);s.onTurn(exitLeft("after"),900,2000);
+        check(s.onReroute(3000).event!=Event.MISS_CANDIDATE&&s.profile().pendingCount()==0,"a turn taken by the wheel is not a miss candidate");
+        s=fresh();s.onGear(false,0);
+        s.onTurn(exitLeft("t2"),120,1000);s.onSteering(70f,1100);
+        check(s.onReroute(1500).event==Event.NONE&&s.profile().pendingCount()==0,"the wheel turned near the current turn: no miss either");
+        s=fresh();s.onGear(false,0);
+        s.onTurn(exitLeft("t3"),250,1000);s.onSteering(10f,1100);s.onTurn(exitLeft("after"),900,2000);
+        check(s.onReroute(3000).event==Event.MISS_CANDIDATE,"a small wheel angle proves nothing");
+        // Arriving and stopping on the brake is enough to be asked, before the gear goes to P.
+        s=fresh();s.onGear(false,0);
+        s.onTurn(exitLeft("a1"),100,0);s.onReroute(1000);
+        check(s.onArrival(2000).event==Event.NONE,"arrived but still rolling: no question");
+        s.onSpeed(0,2100);
+        check(s.onBrake(true,2200).event==Event.QUESTION,"arrived, stopped on the brake: the question comes");
+        // The seat belt coming off at a standstill ends the trip like P would.
+        s=fresh();s.onGear(false,0);s.onTurn(exitLeft("b1"),100,0);s.onReroute(1000);s.onSpeed(0,1500);
+        check(s.onSeatBelt(false,2000).event==Event.QUESTION&&s.parked(),"belt off while stopped: trip ends, question asked");
+        // A fast road by its limit cuts the sentence; the trip distance opens the summary.
+        s=fresh();DriveCoach.chooseWeak(s.profile(),TurnType.EXIT_LEFT);s.onGear(false,0);
+        s.onSpeedLimit(100,0);
+        Outcome fast=s.onTurn(new Turn("f1",TurnType.EXIT_LEFT,"강변북로 방면"),250,0);
+        check(fast.event==Event.SPEAK&&fast.speech.equals("왼쪽 출구, 강변북로 방면."),"limit 100: the short sentence: "+fast.speech);
+        s.onTripDistance(42.3);s.onSignal(Signal.LEFT,100);s.onTurn(exitLeft("f2"),900,200);
+        Outcome ended=s.onGear(true,3000);
+        check(ended.event==Event.SUMMARY&&ended.speech.startsWith("오늘 42km를 달렸어요. 지켜본 회전 1곳"),"the summary opens with the distance: "+ended.speech);
+        // A remembered place coming near without a route is spoken, and its position survives the snapshot.
+        s=fresh();s.onGear(false,0);s.onLocation(37.5,127.0,0);
+        s.onTurn(exitLeft("p1"),100,0);s.onReroute(1000);s.onGear(true,2000);s.answer(true);
+        double[] at=DriveCoach.placeCoord(s.profile(),"p1");
+        check(at!=null&&at[0]==37.5&&at[1]==127.0,"the confirmed miss keeps its position");
+        Profile coords=new Profile("c","C",DriverType.GENERAL);DriveCoach.restore(coords,DriveCoach.snapshot(s.profile()));
+        check(DriveCoach.placeCoords(coords).size()==1&&DriveCoach.placeCoords(coords).get("p1")[1]==127.0,"positions survive the snapshot");
+        s.onGear(false,3000);
+        check(s.onProximity("p1",3500).event==Event.SPEAK,"near a remembered place without a route: spoken");
+        s.onNavigationStatus(true,3600);
+        check(s.onProximity("p1",3700).event==Event.NONE,"with a route the navigation's turns take over");
         System.out.println("GuidanceSession checks passed: "+checks);
     }
 }

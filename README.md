@@ -15,12 +15,16 @@
 | 목적지별 기억과 출발 전 브리핑 (NaviHelper 목적지 이름에 묶어 저장, 정차 중 그 목적지가 잡히면 최대 3곳 읽어 줌) | 구현 |
 | 오늘 주행 요약과 알림 줄이기 제안 (P로 바꾸면 놓침 질문 → 줄이기 제안 → 요약 순서로 한 문장씩) | 구현, 자동 테스트 통과 |
 | 음성 메모·음성 대답 (Pleos SpeechToText SDK, 차량 마이크; PC는 브라우저 음성 인식) | 구현. 에뮬레이터에서 SDK 연결·준비 확인 |
+| 차 신호로 판단 보정 (와이퍼로 비 25%·전조등으로 밤 15% 판단 거리 확대, 핸들 45° 이상이면 재탐색을 놓침으로 보지 않음, 제한속도 80 이상 도로는 짧은 문장, 주행 거리를 요약 앞에) | 구현, 자동 테스트 통과 (`GuidanceSession`, `coach-guidance.js`) |
+| 도착·정차 감지 (내비 도착 + 브레이크 정차에서 P 전에 질문, 정차 중 안전벨트 해제로 주행 종료·요약) | 구현, 자동 테스트 통과 |
+| 내비 없이 기억 지점 알림 (확인된 놓침·메모의 좌표를 저장하고 FusedLocation 근접 알림 반경 300m, 최대 20곳으로 등록; 경로 없이 접근하면 한 문장) | 구현. PC 콘솔의 “기억 지점 접근” 버튼으로 같은 경로를 시연 |
+| 음성 출력 (Pleos TextToSpeech SDK, ON_DEVICE; 서비스가 없으면 Android 음성 합성으로 대체하고 화면에 표시) | 구현. 에뮬레이터 검증은 아래 상태 참고 |
 | 동반앱 시연 화면 (PC, Android) | 구현, 가상 신호로 동작 |
 | 동반앱 실제 위치 모드 (PC, Android) | 구현. 이 기기의 GPS로 위치·속도·정확도를 실시간 표시하고, 저장한 기억 지점에 다가가면 음성으로 알립니다. 방향지시등·내비게이션 정보는 아직 받지 못합니다 |
 | 차량 연동 화면 (PC, Android) | 구현. 같은 규칙(`coach-guidance.js` = `GuidanceSession`)으로 다음 회전·방향지시등·기어·재탐색 이벤트를 판단합니다. Android에서는 Pleos SDK 이벤트가 들어오고, PC에서는 Pleos Virtual Console 모양의 가상 차량 콘솔로 같은 이벤트를 넣어 놓침 → 재탐색 → 정차 질문 → 다음 주행 알림까지 볼 수 있습니다 |
 | 실제 지도, 장소 검색, 경로, 주변 주유소·주차장, 위성지도 (PC, Android 이전 단계 시제품) | 이전 단계 시제품이라 제출 범위가 아닙니다. 운전자학습은 자체 지도를 내지 않고 Pleos 내비 위의 기억 계층만 맡습니다 |
-| Pleos Connect SDK 연동 (Vehicle 2.3.2, NaviHelper 3.0.5, FusedLocation 1.1.3, SpeechToText 3.3.1) + Android Car API | 구현. 방향지시등·기어·조수석 착석은 Vehicle SDK, 다음 회전(두 번째까지)·재탐색·주의 지점·목적지·내비 상태는 NaviHelper SDK, 위치는 FusedLocation SDK, 음성 입력은 SpeechToText SDK, 속도는 Car API(PERF_VEHICLE_SPEED, 권한이 없으면 위치 변화로 계산), 주행 중 화면 간소화는 CarUxRestrictions에서 받아 판단 규칙(`GuidanceSession`)에 연결했습니다. 단위 테스트 통과 |
-| Pleos Connect Emulator v2.1.0 (Android 14, API 34) | release APK 설치·실행 확인. 차량 연동 화면에서 네 SDK가 모두 연결되고, Virtual Console로 넣은 방향지시등(좌·우·끄기)·기어(P·D)·속도(110 km/h, Car API)·조수석 착석이 그대로 수신되며, FusedLocation 위치로 길 익숙도가 계산되고, D에서는 CarUxRestrictions에 따라 상태 한 줄과 질문만 남는 간소화 화면이 됩니다. 내장 내비에 목적지를 잡으면 다음 회전과 남은 거리("좌회전 · 80m")가 NaviHelper를 통해 화면에 표시됩니다. 다만 이 에뮬레이터의 내비는 Android GPS(`geo fix`)나 Virtual Console 속도를 따라 움직이지 않아, 회전을 지나친 뒤 재탐색 → 놓침 질문으로 이어지는 흐름은 실제 이벤트로 확인하지 못했고 단위 테스트와 가상 시연으로만 검증된 상태입니다 |
+| Pleos Connect SDK 5종 연동 (Vehicle 2.3.2, NaviHelper 3.0.5, FusedLocation 1.1.3, SpeechToText 3.3.1, TextToSpeech 3.3.1) + Android Car API | 구현. Vehicle: 방향지시등·기어·조수석 착석·브레이크·핸들 각도·앞유리 와이퍼·전조등·운전석 안전벨트·주행 거리(신호마다 따로 등록해 없는 것은 건너뜀). NaviHelper: 다음 회전(두 번째까지)·재탐색·주의 지점·목적지·도착·제한속도·현재 위치·남은 거리와 시간. FusedLocation: 위치와 기억 지점 근접 알림. SpeechToText: 음성 메모·대답. TextToSpeech: 모든 음성 출력. Car API: 속도·주행 규제 |
+| Pleos Connect Emulator v2.1.0 (Android 14, API 34) | release APK 설치·실행 확인. 차량 연동 화면에서 다섯 SDK가 모두 연결되고(Vehicle·NaviHelper·FusedLocation·SpeechToText·TextToSpeech 모두 “연결됨/준비됨”), Virtual Console로 넣은 기어·방향지시등·속도·브레이크·핸들 각도·앞유리 와이퍼·전조등(하향등)이 Vehicle SDK 이벤트로 그대로 들어오는 것을 확인했습니다(캡처 `outputs/Pleos-에뮬레이터-확인/7-…`, `8-…`). “여기 헷갈려”를 누르면 차량 음성 서비스에 speak 요청이 들어가 재생이 시작되는 것까지 로그로 확인했습니다. 에뮬레이터가 지원하지 않는 것: 주행 거리(trip distance, ERROR_NOT_SUPPORTED_PROPERTY → 화면에서 자동으로 빠짐), 안전벨트 변경(콘솔에 항목 없음, 기본값 “해제”로 수신), 내비 이벤트 주입(TBT·도착·제한속도는 내장 내비가 경로를 안내할 때만 들어옴). |
 | 실차 구동 | 미검증 |
 | 주행 중 동작 | 차량 연동 화면만 DO(distractionOptimized)를 선언하고 자기 태스크로 열려서, 기어를 D로 바꿔도 Pleos 홈 화면이 차단하지 않는 것을 에뮬레이터에서 확인했습니다. 주행 중에는 CarUxRestrictions에 따라 설명·버튼·유형 선택을 숨기고 상태 한 줄과 질문만 남깁니다. 시연·실제 위치 화면은 주행 상태가 되면 시스템이 차단하고 정차하면 돌아옵니다 |
 

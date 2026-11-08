@@ -29,6 +29,8 @@
   // at 64 km/h and further out for every km/h more, and the AR-HUD study on multi-branch roads found 1.5 km best.
   // The distance is scaled around 60 km/h, between half and double, and a road never driven before adds 30%.
   const SPEED_REF_KPH = 60, SPEED_MIN = 0.5, SPEED_MAX = 2.0, NEW_ROAD_FACTOR = 1.3;
+  // Rain (wiper on) and night (low beam on) push the decision distance out: stopping distances grow and signs are read later.
+  const RAIN_FACTOR = 1.25, NIGHT_FACTOR = 1.15;
   // A road cell driven on this many separate trips is familiar; weak types stay quiet there, remembered spots do not.
   const FAMILIAR_AFTER = 3;
   // Lane changes are signalled only about two thirds of the time (ensemble LSTM study); a driver who rarely signals
@@ -36,6 +38,8 @@
   const SIGNAL_SAMPLES = 5, SIGNAL_RATE_MIN = 0.3;
   // Under load (fast, or another turn right behind) the sentence is cut to its core (AdaptiveVoice, CHI 2024).
   const BRIEF_SPEED_KPH = 80, BRIEF_GAP_METERS = 500;
+  // A road whose limit is this high is a fast road: the sentence is cut to its core there too.
+  const BRIEF_LIMIT_KPH = 80;
   const LOWER_QUESTION = '같은 유형을 세 번 잘 지나셨어요. 이 유형 알림을 줄일까요?';
   const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
   const typeOf = id => {
@@ -48,7 +52,7 @@
     if (!owns(driverTypes, driverType)) throw new TypeError('Unknown driver type');
     return { id: String(id), name: String(name), driverType, typeMisses: {}, passStreak: {},
       chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
-      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {} };
+      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {} };
   }
   function misses(profile, type) { return profile.typeMisses[type] || 0; }
   function chooseWeak(profile, type) {
@@ -58,12 +62,14 @@
   function isWeak(profile, type) { return profile.chosenWeak.includes(type) || misses(profile, type) >= WEAK_AFTER; }
   function remembers(profile, placeId) { return profile.places.includes(placeId); }
   // The decision distance for the speed the car is doing and the road it is on; a negative speed means unknown.
-  function decisionMeters(profile, turn, speedKph = -1, familiarity = 'unknown') {
+  function decisionMeters(profile, turn, speedKph = -1, familiarity = 'unknown', rain = false, night = false) {
     const driver = driverTypes[profile.driverType];
     const start = Math.max(driver.baseMeters, profile.habitMeters || 0);
     const base = Math.min(driver.maxMeters, start + Math.min(MAX_STEPS, misses(profile, turn.type)) * STEP_METERS);
     let factor = Number.isFinite(speedKph) && speedKph >= 0 ? Math.max(SPEED_MIN, Math.min(SPEED_MAX, speedKph / SPEED_REF_KPH)) : 1;
     if (familiarity === 'new') factor *= NEW_ROAD_FACTOR;
+    if (rain) factor *= RAIN_FACTOR;
+    if (night) factor *= NIGHT_FACTOR;
     return Math.max(100, Math.min(driver.maxMeters * 2, Math.round(base * factor)));
   }
   // The driver's own signalling rate over passed turns, or -1 until there are enough.
@@ -83,7 +89,7 @@
     const type = typeOf(turn.type);
     const speedKph = Number.isFinite(state.speedKph) ? state.speedKph : -1;
     const familiarity = familiarities.includes(state.familiarity) ? state.familiarity : 'unknown';
-    const limit = decisionMeters(profile, turn, speedKph, familiarity);
+    const limit = decisionMeters(profile, turn, speedKph, familiarity, Boolean(state.rain), Boolean(state.night));
     const remembered = remembers(profile, turn.id);
     if (!isWeak(profile, turn.type) && !remembered) return { action: 'none', reason: 'not-weak', speech: '', limit };
     // A road driven many times is known; only a spot actually missed there is worth a word.
@@ -111,6 +117,11 @@
     return { action: 'speak', reason: 'memory-point', speech: '헷갈렸던 지점입니다. 미리 확인하세요.' };
   }
   function addMemo(profile, placeId) { if (!remembers(profile, placeId)) profile.places.push(placeId); }
+  // Where a remembered place is; kept so the car can be told when it comes near without a route.
+  function placeCoord(profile, placeId, lat, lon) { if (placeId && Number.isFinite(lat) && Number.isFinite(lon)) profile.placeCoords[placeId] = [lat, lon]; }
+  function placeCoordOf(profile, placeId) { return owns(profile.placeCoords, placeId) ? profile.placeCoords[placeId].slice() : null; }
+  // Every remembered place that has a position: id to [lat, lon].
+  function placeCoords(profile) { const out = {}; for (const id of Object.keys(profile.placeCoords)) if (remembers(profile, id)) out[id] = profile.placeCoords[id].slice(); return out; }
   function labelPlace(profile, placeId, label) {
     if (typeof label !== 'string' || !label.trim()) return;
     profile.placeLabels[placeId] = label.trim().replace(/[\t\n]/g, ' ');
@@ -151,7 +162,7 @@
       if (item.detail) labelPlace(profile, item.id, item.detail + ' ' + turnTypes[item.type].label);
       rememberFor(profile, destination, item.id);
     }
-    return { type: item.type, confirmed: Boolean(confirmed), becameWeak: !wasWeak && isWeak(profile, item.type) };
+    return { id: item.id, type: item.type, confirmed: Boolean(confirmed), becameWeak: !wasWeak && isWeak(profile, item.type) };
   }
   function notePass(profile, turn, signalOnMeters) {
     profile.passStreak[turn.type] = (profile.passStreak[turn.type] || 0) + 1;
@@ -179,9 +190,12 @@
     return n === 0 ? 'new' : n < FAMILIAR_AFTER ? 'known' : 'familiar';
   }
   // One sentence when the car is parked after a trip; nothing when there was nothing to watch.
-  function summarySpeech(watched, passed, missCandidates, signalOff) {
+  function summarySpeech(watched, passed, missCandidates, signalOff, tripKm = -1) {
     if (!watched && !signalOff) return '';
-    let text = watched ? '오늘 지켜본 회전 ' + watched + '곳 중 잘 지난 곳 ' + passed + ', 놓침 후보 ' + missCandidates + '입니다.' : '';
+    // Opens with the trip's distance when the odometer gave one.
+    const km = Number.isFinite(tripKm) && tripKm >= 0.5;
+    let text = km ? '오늘 ' + (tripKm >= 10 ? String(Math.round(tripKm)) : tripKm.toFixed(1)) + 'km를 달렸어요. ' : '';
+    text += watched ? (km ? '지켜본 회전 ' : '오늘 지켜본 회전 ') + watched + '곳 중 잘 지난 곳 ' + passed + ', 놓침 후보 ' + missCandidates + '입니다.' : '';
     if (signalOff) text += (watched ? ' ' : '') + '방향지시등 없이 지난 회전이 ' + signalOff + '번 있었어요.';
     return text;
   }
@@ -198,12 +212,12 @@
   // Erases what this profile learned. Other profiles keep theirs.
   function clearMemory(profile) {
     Object.assign(profile, { typeMisses: {}, passStreak: {}, chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
-      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {} });
+      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {} });
   }
   // What a profile learned, as JSON, so it can be kept in the browser. Garbage is skipped rather than trusted.
   function snapshot(profile) {
-    const { typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells } = profile;
-    return JSON.stringify({ typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells });
+    const { typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords } = profile;
+    return JSON.stringify({ typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords });
   }
   function restore(profile, text) {
     let data; try { data = JSON.parse(text || ''); } catch { return; }
@@ -219,8 +233,9 @@
     for (const destination of Object.keys(plain(data.destPlaces))) for (const id of Array.isArray(data.destPlaces[destination]) ? data.destPlaces[destination] : []) if (typeof id === 'string' && id) rememberFor(profile, destination, id);
     for (const id of Object.keys(plain(data.placeLabels))) labelPlace(profile, id, data.placeLabels[id]);
     for (const cell of Object.keys(plain(data.roadCells))) if (/^-?\d+,-?\d+$/.test(cell) && count(data.roadCells[cell]) > 0) profile.roadCells[cell] = data.roadCells[cell];
+    for (const id of Object.keys(plain(data.placeCoords))) { const c = data.placeCoords[id]; if (Array.isArray(c) && c.length === 2) placeCoord(profile, id, Number(c[0]), Number(c[1])); }
   }
-  return Object.freeze({ driverTypes, turnTypes, familiarities, LOWER_QUESTION, SPEED_REF_KPH, FAMILIAR_AFTER, BRIEF_SPEED_KPH, BRIEF_GAP_METERS,
+  return Object.freeze({ driverTypes, turnTypes, familiarities, LOWER_QUESTION, SPEED_REF_KPH, FAMILIAR_AFTER, BRIEF_SPEED_KPH, BRIEF_GAP_METERS, BRIEF_LIMIT_KPH, placeCoord, placeCoordOf, placeCoords,
     createProfile, misses, chooseWeak, isWeak, remembers, decisionMeters, signalRate, rarelySignals,
     decide, decidePoint, addMemo, labelPlace, placeLabel, rememberFor, placesFor, noteMiss, canReview, review, notePass, lowerType,
     cellKey, noteRoad, familiarity, summarySpeech,

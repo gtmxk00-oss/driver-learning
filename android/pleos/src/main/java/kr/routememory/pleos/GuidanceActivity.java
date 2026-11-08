@@ -7,7 +7,6 @@ import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -34,7 +33,7 @@ import kr.routememory.core.GuidanceSession.Outcome;
  * status line and its question.
  */
 public class GuidanceActivity extends Activity implements PleosBridge.Host,PleosVoice.Host {
-    static final String BADGE="Pleos SDK 연동 · 방향지시등·기어·좌석·속도·위치·내비 이벤트 실제 · 공식 에뮬레이터 또는 실차 필요";
+    static final String BADGE="Pleos SDK 5종 연동 · 차량 신호 9종·내비 이벤트·위치·근접 알림·음성 인식·합성 실제 · 공식 에뮬레이터 또는 실차 필요";
     private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_LANE=0xFF5B5F69,SIM_ROUTE=0xFFFF7A26;
     private static final long SPEAK_MS=4400,LONG_MS=9000;
     private static final int REQUEST_SPEED=41;
@@ -42,7 +41,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private CoachActivity.Palette p;
     private GuidanceSession session; private PleosBridge bridge; private PleosVoice voice;
     private UxRestrictionsWatch restrictions;
-    private TextToSpeech tts; private boolean ttsReady;
+    private PleosSpeaker speaker; private String speakerState="준비 전",carLine="모름",roadLine="모름";
     private String spoken="",spokenLabel=""; private long spokenAt,spokenFor;
     private String vehicleState="연결 전",naviState="연결 전",speedSource="-",locationState="-",voiceState="준비 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-",destination="";
     private int meters=-1,speedKph=-1; private Signal signal=Signal.OFF; private boolean restricted,heardIsAnswer;
@@ -58,11 +57,11 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         session=new GuidanceSession(load());
         bridge=new PleosBridge(this,session,this);
         voice=new PleosVoice(this,this);
+        speaker=new PleosSpeaker(this,state->{speakerState=state;render();});
         build();render();
-        tts=new TextToSpeech(getApplicationContext(),code->{ttsReady=code==TextToSpeech.SUCCESS&&tts!=null&&tts.setLanguage(Locale.KOREAN)>=TextToSpeech.LANG_AVAILABLE;});
         try{restrictions=new UxRestrictionsWatch();restrictions.start(this,value->{restricted=value;render();});}catch(RuntimeException|LinkageError e){restrictions=null;}
     }
-    @Override protected void onDestroy(){bridge.release();voice.release();if(restrictions!=null)try{restrictions.stop();}catch(RuntimeException|LinkageError ignored){}if(tts!=null)tts.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){bridge.release();voice.release();if(restrictions!=null)try{restrictions.stop();}catch(RuntimeException|LinkageError ignored){}if(speaker!=null)speaker.release();super.onDestroy();}
     PleosBridge bridge(){return bridge;}
     GuidanceSession session(){return session;}
 
@@ -78,6 +77,8 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private void save() {
         Profile profile=session.profile();
         getSharedPreferences("coach-guidance",MODE_PRIVATE).edit().putString("driver",profile.driverType.name()).putString("memory-"+profile.driverType.name(),DriveCoach.snapshot(profile)).apply();
+        // The location service watches the remembered places; a changed memory means a changed watch list.
+        if(bridge!=null&&bridge.connected())bridge.watchPlaces();
     }
 
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
@@ -127,9 +128,9 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         stage.addView(app,wide?new LinearLayout.LayoutParams(0,-1,4):new LinearLayout.LayoutParams(-1,0,4));
 
         note=text(14,p.ink,false);note.setPadding(dp(16),dp(8),dp(16),dp(4));
-        note.setText("연결을 누르면 Vehicle·NaviHelper·FusedLocation·SpeechToText SDK와 Car API에 붙습니다. 내비가 알려 주는 다음 회전, 방향지시등, 속도, 길 익숙도로 판단하고, 재탐색 뒤 정차하면 놓쳤는지 묻고 오늘 주행을 한 문장으로 정리합니다.");root.addView(note);
+        note.setText("연결을 누르면 Vehicle·NaviHelper·FusedLocation·SpeechToText·TextToSpeech SDK와 Car API에 붙습니다. 내비가 알려 주는 다음 회전, 방향지시등, 속도, 길 익숙도로 판단하고, 재탐색 뒤 정차하면 놓쳤는지 묻고 오늘 주행을 한 문장으로 정리합니다.");root.addView(note);
         controls=new LinearLayout(this);controls.setPadding(dp(16),dp(4),dp(16),dp(4));
-        connect=button("연결",true,()->{if(bridge.connected()){bridge.release();voice.release();}else{askSpeedPermission();bridge.connect();voice.connect();}render();});
+        connect=button("연결",true,()->{if(bridge.connected()){bridge.release();voice.release();}else{askSpeedPermission();bridge.connect();voice.connect();speaker.connect();}render();});
         controls.addView(connect,new LinearLayout.LayoutParams(0,-2,1));
         controls.addView(button("기억 지우기",false,()->{DriveCoach.clearMemory(session.profile());save();render();}),grow(dp(8)));
         controls.addView(button("가상 시연",false,this::finish),grow(dp(8)));
@@ -182,7 +183,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         memo(words);
     }
     private void show(String label,String text,long forMs){spokenLabel=label;spoken=text;spokenAt=System.currentTimeMillis();spokenFor=forMs;}
-    private void speak(String text){if(ttsReady&&tts!=null)tts.speak(text,TextToSpeech.QUEUE_ADD,null,"guidance");}
+    private void speak(String text){if(speaker!=null)speaker.speak(text);}
 
     // Host: everything arrives on the main thread.
     @Override public void onLink(String v,String n){vehicleState=v;naviState=n;render();}
@@ -191,6 +192,8 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     @Override public void onSpeed(int kph){speedKph=kph;render();}
     @Override public void onNavigation(String label,int m,String st){turnLabel=label;meters=m;naviStatus=st;render();}
     @Override public void onDestination(String name){destination=name==null?"":name;render();}
+    @Override public void onCar(String line){carLine=line;render();}
+    @Override public void onRoad(String line){roadLine=line;render();}
     @Override public void onOutcome(Outcome outcome,String source) {
         if(outcome==null)return;
         switch(outcome.event) {
@@ -221,7 +224,8 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         laneText.setText(lane.text);
         metrics.setText("방향지시등: "+(signal==Signal.LEFT?"왼쪽":signal==Signal.RIGHT?"오른쪽":"꺼짐")+"\n기어: "+gear+"\n속도: "+(speedKph>=0?speedKph+" km/h":"모름")+" · "+speedSource
             +"\n내비 상태: "+naviStatus+(destination.isEmpty()?"":" · 목적지 "+destination)+"\n길 익숙도: "+familiarityLabel(session.familiarity())+" · 위치 "+locationState
-            +"\nVehicle SDK: "+vehicleState+(bridge.seatLive()?" · 좌석":"")+"\nNaviHelper SDK: "+naviState+"\nSpeechToText SDK: "+voiceState);
+            +"\n차량 신호: "+carLine+"\n도로: "+roadLine
+            +"\nVehicle SDK: "+vehicleState+(bridge.seatLive()?" · 좌석":"")+(bridge.extrasLive().isEmpty()?"":" · "+bridge.extrasLive())+"\nNaviHelper SDK: "+naviState+"\nSpeechToText SDK: "+voiceState+"\nTextToSpeech SDK: "+speakerState);
         tag.setText("차량 연동 · "+type.label);
         chips.setText(type.label+" 유형 · "+(bridge.connected()?"연결됨":"연결 안 됨")+(session.passenger()?" · 승객 탑승":"")+(restricted?" · 주행 중 간소화":""));
         double rate=DriveCoach.signalRate(profile);

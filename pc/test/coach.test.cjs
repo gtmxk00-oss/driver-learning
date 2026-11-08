@@ -270,3 +270,11 @@ test('lane advice follows the side of the next turn and says whether to move now
   assert.match(C.laneHint({ id: 'o', type: 'roundabout' }, 250, 300).text, /속도 줄이기/);
   assert.equal(C.laneHint(null, 100, 300).side, 'any');
 });
+test('rain and night push the decision distance out; the summary can open with the trip distance', () => {
+  const g = C.createProfile('g', 'G'), e = { id: 'e', type: 'exit-left' };
+  assert.equal(C.decisionMeters(g, e, -1, 'unknown', true, false), 375);
+  assert.equal(C.decisionMeters(g, e, -1, 'unknown', false, true), 345);
+  assert.equal(C.summarySpeech(2, 1, 1, 0, 42.3), '오늘 42km를 달렸어요. 지켜본 회전 2곳 중 잘 지난 곳 1, 놓침 후보 1입니다.');
+  assert.equal(C.summarySpeech(0, 0, 0, 0, 42.3), '');
+  assert.match(C.summarySpeech(1, 1, 0, 0, 3.26), /^오늘 3\.3km를/);
+});
