@@ -2,19 +2,24 @@ package kr.routememory.pleos;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.io.File;
+import java.nio.file.Files;
 import java.util.Locale;
 import kr.routememory.coach.CoachActivity;
 import kr.routememory.core.DriveCoach;
 import kr.routememory.core.DriveCoach.DriverType;
+import kr.routememory.core.DriveCoach.Familiarity;
 import kr.routememory.core.DriveCoach.Profile;
 import kr.routememory.core.DriveCoach.Signal;
 import kr.routememory.core.GuidanceSession;
@@ -22,20 +27,27 @@ import kr.routememory.core.GuidanceSession.Event;
 import kr.routememory.core.GuidanceSession.Outcome;
 
 /**
- * The companion on the Pleos Connect SDKs: turn signal and gear from the Vehicle SDK, next turn and reroutes from
- * NaviHelper. Needs the Pleos Connect emulator or a Pleos car; on anything else it reports which service is missing.
+ * The companion on the Pleos Connect SDKs: turn signal, gear and the passenger seat from the Vehicle SDK, next turns,
+ * reroutes and the destination from NaviHelper, the speed from the Car API or from positions, the position from
+ * FusedLocation, and a spoken memo or answer through SpeechToText. Needs the Pleos Connect emulator or a Pleos car;
+ * on anything else it reports which service is missing. While the car asks for a simplified screen it shows only its
+ * status line and its question.
  */
-public class GuidanceActivity extends Activity implements PleosBridge.Host {
-    static final String BADGE="Pleos SDK 연동 · 방향지시등·기어·내비 이벤트 실제 · 공식 에뮬레이터 또는 실차 필요";
+public class GuidanceActivity extends Activity implements PleosBridge.Host,PleosVoice.Host {
+    static final String BADGE="Pleos SDK 연동 · 방향지시등·기어·좌석·속도·위치·내비 이벤트 실제 · 공식 에뮬레이터 또는 실차 필요";
     private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC;
-    private static final long SPEAK_MS=4400;
+    private static final long SPEAK_MS=4400,LONG_MS=9000;
+    private static final int REQUEST_SPEED=41;
+    private static final String CAR_SPEED_PERMISSION="android.car.permission.CAR_SPEED";
     private CoachActivity.Palette p;
-    private GuidanceSession session; private PleosBridge bridge;
-    private TextToSpeech voice; private boolean voiceReady;
-    private String spoken=""; private long spokenAt; private String vehicleState="연결 전",naviState="연결 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-";
-    private int meters=-1; private Signal signal=Signal.OFF;
-    private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts;
-    private LinearLayout statusBox,typeBar,answers; private Button connect;
+    private GuidanceSession session; private PleosBridge bridge; private PleosVoice voice;
+    private UxRestrictionsWatch restrictions;
+    private TextToSpeech tts; private boolean ttsReady;
+    private String spoken="",spokenLabel=""; private long spokenAt,spokenFor;
+    private String vehicleState="연결 전",naviState="연결 전",speedSource="-",locationState="-",voiceState="준비 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-",destination="";
+    private int meters=-1,speedKph=-1; private Signal signal=Signal.OFF; private boolean restricted,heardIsAnswer;
+    private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts,note;
+    private LinearLayout statusBox,typeBar,answers,controls,memoRow; private Button connect,yes,no,memoButton,voiceButton,comfortButton;
 
     @Override protected void onCreate(Bundle saved) {
         boolean night=(getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
@@ -45,11 +57,14 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(saved);
         session=new GuidanceSession(load());
         bridge=new PleosBridge(this,session,this);
+        voice=new PleosVoice(this,this);
         build();render();
-        voice=new TextToSpeech(getApplicationContext(),code->{voiceReady=code==TextToSpeech.SUCCESS&&voice!=null&&voice.setLanguage(Locale.KOREAN)>=TextToSpeech.LANG_AVAILABLE;});
+        tts=new TextToSpeech(getApplicationContext(),code->{ttsReady=code==TextToSpeech.SUCCESS&&tts!=null&&tts.setLanguage(Locale.KOREAN)>=TextToSpeech.LANG_AVAILABLE;});
+        try{restrictions=new UxRestrictionsWatch();restrictions.start(this,value->{restricted=value;render();});}catch(RuntimeException|LinkageError e){restrictions=null;}
     }
-    @Override protected void onDestroy(){bridge.release();if(voice!=null)voice.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){bridge.release();voice.release();if(restrictions!=null)try{restrictions.stop();}catch(RuntimeException|LinkageError ignored){}if(tts!=null)tts.shutdown();super.onDestroy();}
     PleosBridge bridge(){return bridge;}
+    GuidanceSession session(){return session;}
 
     // What the driver confirmed stays on this device, per driver type.
     private Profile load() {
@@ -72,6 +87,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
         Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextColor(primary?p.accentInk:p.ink);
         b.setBackground(round(primary?p.accent:p.surface2,10));b.setMinHeight(dp(48));b.setOnClickListener(v->action.run());return b;
     }
+    private LinearLayout.LayoutParams grow(int leftMargin){LinearLayout.LayoutParams l=new LinearLayout.LayoutParams(0,-2,1);l.leftMargin=leftMargin;return l;}
     private void build() {
         boolean wide=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(p.canvas);
@@ -95,23 +111,26 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
         statusBox=new LinearLayout(this);statusBox.setOrientation(LinearLayout.VERTICAL);statusBox.setGravity(Gravity.CENTER_VERTICAL);statusBox.setPadding(dp(14),dp(10),dp(14),dp(10));
         statusLabel=text(12,p.ink2,true);status=text(18,p.ink,true);statusBox.addView(statusLabel);statusBox.addView(status);
         answers=new LinearLayout(this);answers.setPadding(0,dp(8),0,0);
-        answers.addView(button("네, 놓쳤어요",true,()->answer(true)),new LinearLayout.LayoutParams(0,-2,1));
-        Button no=button("아니요",false,()->answer(false));LinearLayout.LayoutParams noParams=new LinearLayout.LayoutParams(0,-2,1);noParams.leftMargin=dp(8);answers.addView(no,noParams);
+        yes=button("네, 놓쳤어요",true,()->answer(true));answers.addView(yes,new LinearLayout.LayoutParams(0,-2,1));
+        no=button("아니요",false,()->answer(false));answers.addView(no,grow(dp(8)));
         statusBox.addView(answers);
         LinearLayout.LayoutParams boxParams=new LinearLayout.LayoutParams(-1,0,1);boxParams.topMargin=dp(8);boxParams.bottomMargin=dp(8);app.addView(statusBox,boxParams);
         facts=text(13,p.ink2,false);app.addView(facts);
         stage.addView(app,wide?new LinearLayout.LayoutParams(0,-1,4):new LinearLayout.LayoutParams(-1,0,4));
 
-        TextView note=text(14,p.ink,false);note.setPadding(dp(16),dp(8),dp(16),dp(4));
-        note.setText("연결을 누르면 Vehicle SDK와 NaviHelper SDK에 붙습니다. 내비가 안내하는 다음 회전과 방향지시등으로 판단하고, 재탐색 뒤 정차하면 놓쳤는지 묻습니다.");root.addView(note);
-        LinearLayout controls=new LinearLayout(this);controls.setPadding(dp(16),dp(4),dp(16),dp(4));
-        connect=button("연결",true,()->{if(bridge.connected())bridge.release();else bridge.connect();render();});
+        note=text(14,p.ink,false);note.setPadding(dp(16),dp(8),dp(16),dp(4));
+        note.setText("연결을 누르면 Vehicle·NaviHelper·FusedLocation·SpeechToText SDK와 Car API에 붙습니다. 내비가 알려 주는 다음 회전, 방향지시등, 속도, 길 익숙도로 판단하고, 재탐색 뒤 정차하면 놓쳤는지 묻고 오늘 주행을 한 문장으로 정리합니다.");root.addView(note);
+        controls=new LinearLayout(this);controls.setPadding(dp(16),dp(4),dp(16),dp(4));
+        connect=button("연결",true,()->{if(bridge.connected()){bridge.release();voice.release();}else{askSpeedPermission();bridge.connect();voice.connect();}render();});
         controls.addView(connect,new LinearLayout.LayoutParams(0,-2,1));
-        Button clear=button("기억 지우기",false,()->{DriveCoach.clearMemory(session.profile());save();render();});
-        LinearLayout.LayoutParams second=new LinearLayout.LayoutParams(0,-2,1);second.leftMargin=dp(8);controls.addView(clear,second);
-        Button back=button("가상 시연",false,this::finish);
-        LinearLayout.LayoutParams third=new LinearLayout.LayoutParams(0,-2,1);third.leftMargin=dp(8);controls.addView(back,third);
+        controls.addView(button("기억 지우기",false,()->{DriveCoach.clearMemory(session.profile());save();render();}),grow(dp(8)));
+        controls.addView(button("가상 시연",false,this::finish),grow(dp(8)));
         root.addView(controls);
+        memoRow=new LinearLayout(this);memoRow.setPadding(dp(16),0,dp(16),dp(4));
+        memoButton=button("여기 헷갈려",false,()->memo("여기 헷갈려"));memoRow.addView(memoButton,new LinearLayout.LayoutParams(0,-2,1));
+        voiceButton=button("말로 하기",false,this::listen);memoRow.addView(voiceButton,grow(dp(8)));
+        comfortButton=button("편한 길로 바꾸기",false,this::acceptComfort);memoRow.addView(comfortButton,grow(dp(8)));
+        root.addView(memoRow);
         typeBar=new LinearLayout(this);typeBar.setPadding(dp(16),dp(4),dp(16),dp(10));
         for(DriverType type:DriverType.values()) {
             Button b=button(type.label,false,()->{save();Profile next=new Profile("car","차량",type);DriveCoach.restore(next,getSharedPreferences("coach-guidance",MODE_PRIVATE).getString("memory-"+type.name(),""));session.setProfile(next);save();render();});
@@ -121,15 +140,69 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
         root.setOnApplyWindowInsetsListener((v,insets)->{v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});
         setContentView(root);
     }
-    private void answer(boolean confirmed){session.answer(confirmed);spoken="";save();render();}
+    /** The Car API speed is a dangerous permission on Android Automotive; the car may grant it, the emulator image has no such permission. */
+    private void askSpeedPermission() {
+        try{if(checkSelfPermission(CAR_SPEED_PERMISSION)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{CAR_SPEED_PERMISSION},REQUEST_SPEED);}catch(RuntimeException ignored){}
+    }
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(code,permissions,results);
+        if(code==REQUEST_SPEED&&bridge.connected()){bridge.release();bridge.connect();render();}
+    }
+    private void answer(boolean confirmed) {
+        if(session.lowerAsked())session.answerLower(confirmed);else session.answer(confirmed);
+        spoken="";save();render();
+        // Whatever waited behind the question (another question, the summary) comes a moment later.
+        statusBox.postDelayed(()->onOutcome(session.afterAnswer(),"after"),1200);
+    }
+    private void memo(String words){Outcome o=session.memo(words,System.currentTimeMillis());onOutcome(o,"memo");}
+    /** One phrase through the car's microphone: yes/no answers a pending question, anything else is a memo. */
+    private void listen() {
+        if(voice.listening()){voice.cancel();render();return;}
+        if(!voice.ready()){voiceState=voice.state().startsWith("연결")||voice.state().startsWith("오류")?voice.state():"연결을 먼저 누르세요";render();return;}
+        heardIsAnswer=session.pendingQuestion()!=null;
+        byte[] recording=null;
+        // On the emulator the microphone may hear nothing; a recording placed in the app's files folder stands in.
+        try{File test=new File(getExternalFilesDir(null),"stt-test.pcm");if(test.isFile())recording=Files.readAllBytes(test.toPath());}catch(Exception ignored){}
+        voice.listen(recording);render();
+    }
+    @Override public void onVoiceState(String state){voiceState=state;render();}
+    @Override public void onHeard(String words) {
+        if(words.isEmpty()){render();return;}
+        if(heardIsAnswer&&session.pendingQuestion()!=null) {
+            if(words.matches("^(네|예|응|맞아|놓쳤|줄여|그래).*")){answer(true);return;}
+            if(words.matches("^(아니|아뇨|괜찮|그냥).*")){answer(false);return;}
+        }
+        memo(words);
+    }
+    private void acceptComfort() {
+        String dest=session.destination();
+        if(dest==null)return;
+        DriveCoach.acceptComfort(session.profile(),dest);
+        boolean asked=bridge.requestComfortRoute();
+        show("편한 길",asked?"내비에 편안한 경로 옵션을 요청했어요":"내비가 연결돼 있지 않아 요청하지 못했어요",SPEAK_MS);
+        save();render();
+    }
+    private void show(String label,String text,long forMs){spokenLabel=label;spoken=text;spokenAt=System.currentTimeMillis();spokenFor=forMs;}
+    private void speak(String text){if(ttsReady&&tts!=null)tts.speak(text,TextToSpeech.QUEUE_ADD,null,"guidance");}
 
     // Host: everything arrives on the main thread.
     @Override public void onLink(String v,String n){vehicleState=v;naviState=n;render();}
+    @Override public void onSources(String speed,String location){speedSource=speed;locationState=location;render();}
     @Override public void onVehicle(Signal s,String g){signal=s;gear=g;render();}
+    @Override public void onSpeed(int kph){speedKph=kph;render();}
     @Override public void onNavigation(String label,int m,String st){turnLabel=label;meters=m;naviStatus=st;render();}
+    @Override public void onDestination(String name){destination=name==null?"":name;render();}
     @Override public void onOutcome(Outcome outcome,String source) {
-        if(outcome.event==Event.SPEAK||outcome.event==Event.QUESTION){spoken=outcome.speech;spokenAt=System.currentTimeMillis();if(voiceReady)voice.speak(outcome.speech,TextToSpeech.QUEUE_ADD,null,"guidance");}
-        if(outcome.event==Event.MISS_CANDIDATE||outcome.event==Event.PASSED||outcome.event==Event.QUESTION)save();
+        if(outcome==null)return;
+        switch(outcome.event) {
+            case SPEAK:show("말하는 중",outcome.speech,SPEAK_MS);speak(outcome.speech);break;
+            case QUESTION:case LOWER_QUESTION:speak(outcome.speech);break;
+            case BRIEFING:show("출발 전 브리핑",outcome.speech,LONG_MS);speak(outcome.speech);break;
+            case SUMMARY:show("오늘 주행 요약",outcome.speech,LONG_MS);speak(outcome.speech);break;
+            case MEMO:show("메모",outcome.speech,SPEAK_MS);speak(outcome.speech);break;
+            default:break;
+        }
+        if(outcome.event!=Event.NONE&&outcome.event!=Event.SILENT)save();
         render();
     }
     private static String keepWords(String value) {
@@ -140,21 +213,34 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
     private void statusView(int background,int label,int body,String labelText,String bodyText) {
         statusBox.setBackground(round(background,12));statusLabel.setTextColor(label);status.setTextColor(body);statusLabel.setText(labelText);status.setText(keepWords(bodyText));
     }
+    private static String familiarityLabel(Familiarity f){switch(f){case NEW:return "처음 가는 길";case KNOWN:return "몇 번 가 본 길";case FAMILIAR:return "익숙한 길";default:return "모름";}}
     private void render() {
         long now=System.currentTimeMillis();Profile profile=session.profile();DriverType type=profile.driverType;
         headline.setText(turnLabel);distance.setText(meters>=0?meters+"m":"");
-        metrics.setText("방향지시등: "+(signal==Signal.LEFT?"왼쪽":signal==Signal.RIGHT?"오른쪽":"꺼짐")+"\n기어: "+gear+"\n내비 상태: "+naviStatus+"\nVehicle SDK: "+vehicleState+"\nNaviHelper SDK: "+naviState);
+        metrics.setText("방향지시등: "+(signal==Signal.LEFT?"왼쪽":signal==Signal.RIGHT?"오른쪽":"꺼짐")+"\n기어: "+gear+"\n속도: "+(speedKph>=0?speedKph+" km/h":"모름")+" · "+speedSource
+            +"\n내비 상태: "+naviStatus+(destination.isEmpty()?"":" · 목적지 "+destination)+"\n길 익숙도: "+familiarityLabel(session.familiarity())+" · 위치 "+locationState
+            +"\nVehicle SDK: "+vehicleState+(bridge.seatLive()?" · 좌석":"")+"\nNaviHelper SDK: "+naviState+"\nSpeechToText SDK: "+voiceState);
         tag.setText("차량 연동 · "+type.label);
-        chips.setText(type.label+" 유형 · "+(bridge.connected()?"연결됨":"연결 안 됨"));
-        facts.setText("약한 유형: "+(DriveCoach.weakLabels(profile).isEmpty()?"없음":String.join(", ",DriveCoach.weakLabels(profile)))+"\n기억 지점: "+profile.placeCount()+"곳 · 확인 대기: "+profile.pendingCount()+"건");
+        chips.setText(type.label+" 유형 · "+(bridge.connected()?"연결됨":"연결 안 됨")+(session.passenger()?" · 승객 탑승":"")+(restricted?" · 주행 중 간소화":""));
+        double rate=DriveCoach.signalRate(profile);
+        facts.setText("약한 유형: "+(DriveCoach.weakLabels(profile).isEmpty()?"없음":String.join(", ",DriveCoach.weakLabels(profile)))+"\n기억 지점: "+profile.placeCount()+"곳 · 확인 대기: "+profile.pendingCount()+"건 · 길 "+profile.roadCellCount()+"칸"
+            +"\n판단 거리: "+DriveCoach.decisionMeters(profile,session.currentTurn()==null?new DriveCoach.Turn("-",DriveCoach.TurnType.EXIT_LEFT):session.currentTurn(),session.speedKph(),session.familiarity())+"m · 깜빡이 "+(rate<0?"기록 중":Math.round(rate*100)+"%"));
         connect.setText(bridge.connected()?"연결 해제":"연결");
+        voiceButton.setText(voice.listening()?"듣는 중… (누르면 취소)":"말로 하기");
+        String dest=session.destination();
+        comfortButton.setVisibility(dest!=null&&!DriveCoach.comfortOffer(profile,dest,session.parked(),session.passenger()).isEmpty()?View.VISIBLE:View.GONE);
         for(int i=0;i<typeBar.getChildCount();i++)typeBar.getChildAt(i).setBackground(round(DriveCoach.DriverType.values()[i]==type?p.accentSoft:p.surface2,10));
-        answers.setVisibility(session.pendingQuestion()!=null?android.view.View.VISIBLE:android.view.View.GONE);
-        if(session.pendingQuestion()!=null){statusView(p.accent,p.accentInk,p.accentInk,"정차 중 질문",session.pendingQuestion());return;}
-        if(!spoken.isEmpty()&&now-spokenAt<SPEAK_MS){statusView(p.accent,p.accentInk,p.accentInk,"말하는 중",spoken);return;}
+        // While the car asks for a simplified screen, only the status and its question stay.
+        int hidden=restricted?View.GONE:View.VISIBLE;
+        note.setVisibility(hidden);controls.setVisibility(hidden);typeBar.setVisibility(hidden);facts.setVisibility(hidden);memoRow.setVisibility(restricted&&session.pendingQuestion()==null?View.GONE:View.VISIBLE);
+        answers.setVisibility(session.pendingQuestion()!=null?View.VISIBLE:View.GONE);
+        yes.setText(session.lowerAsked()?"네, 줄여 주세요":"네, 놓쳤어요");
+        if(session.pendingQuestion()!=null){statusView(p.accent,p.accentInk,p.accentInk,session.lowerAsked()?"정차 중 제안":"정차 중 질문",session.pendingQuestion());return;}
+        if(!spoken.isEmpty()&&now-spokenAt<spokenFor){statusView(p.accent,p.accentInk,p.accentInk,spokenLabel,spoken);return;}
         if(!bridge.connected()){statusView(p.surface2,p.ink2,p.ink,"연결 안 됨","연결을 누르면 Pleos SDK에 붙습니다");return;}
         if(session.currentTurn()==null){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","내비가 다음 회전을 알려 주면 판단합니다");return;}
-        if(DriveCoach.isWeak(profile,session.currentTurn().type)||DriveCoach.remembers(profile,session.currentTurn().id)){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중",session.currentTurn().type.label+" · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn())+"m");return;}
+        if(DriveCoach.remembers(profile,session.currentTurn().id)){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","기억해 둔 곳 · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity())+"m");return;}
+        if(DriveCoach.isWeak(profile,session.currentTurn().type)){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중",session.currentTurn().type.label+" · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity())+"m"+(session.familiarity()==Familiarity.FAMILIAR?" · 익숙한 길이라 말하지 않음":""));return;}
         statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","이 회전은 아직 기록이 없습니다");
     }
 }

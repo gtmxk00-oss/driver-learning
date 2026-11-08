@@ -10,8 +10,8 @@ android {
         applicationId 'kr.routememory.pleos'
         minSdk 29
         targetSdk 35
-        versionCode 10
-        versionName '0.10.0-pleos'
+        versionCode 11
+        versionName '0.11.0-pleos'
     }
     signingConfigs {
         release {
@@ -30,13 +30,18 @@ android {
         }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    // Speed and driving restrictions come from the Android Car API; optional so phones and the unit-test JVM load without it.
+    useLibrary 'android.car', false
     testOptions { unitTests.includeAndroidResources = true }
 }
 dependencies {
     implementation project(':coach')
-    // Pleos Connect SDKs: turn signal and gear from Vehicle, next turn and reroutes from NaviHelper.
+    // Pleos Connect SDKs: turn signal, gear and seat from Vehicle; turns, reroutes and the destination from NaviHelper;
+    // the position from FusedLocation; a spoken memo or answer from SpeechToText.
     implementation 'ai.pleos.playground:Vehicle:2.3.2'
     implementation 'ai.pleos.playground:NaviHelper:3.0.5'
+    implementation 'ai.pleos.playground:FusedLocation:1.1.3'
+    implementation 'ai.pleos.playground:SpeechToText:3.3.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.14.1'
 }

@@ -125,3 +125,10 @@
 .ivi-screen .coach-answers{margin-top:1cqw}
 .ivi-screen .coach-answers button{min-height:3.1cqw;font-size:1.6cqw}
 .ivi-screen .coach-facts div{font-size:1.4cqw}
+
+/* Car-link console additions: a speed slider, the road familiarity, the destination and memo inputs. */
+.coach-console input[type=range]{min-height:0;width:150px;padding:0;accent-color:var(--accent)}
+.coach-console output{min-width:72px;font-size:13px;font-weight:700;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.coach-console button.listening{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text);animation:ivi-blink 1s steps(1) infinite}
+.ivi-speed{font-variant-numeric:tabular-nums}
+.coach-facts .coach-fact-sub{opacity:.7}

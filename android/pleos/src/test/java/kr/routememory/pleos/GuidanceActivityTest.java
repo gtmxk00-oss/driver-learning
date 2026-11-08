@@ -14,6 +14,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
@@ -37,12 +38,15 @@ public class GuidanceActivityTest {
         throw new AssertionError("No button: "+title);
     }
     private static void settle(){shadowOf(Looper.getMainLooper()).idle();}
+    private static TBTInfo tbt(TurnType type,double meters,String words){return new TBTInfo(type,meters,words);}
 
     @Test public void saysWhatItNeedsBeforeConnecting() {
         GuidanceActivity activity=Robolectric.buildActivity(GuidanceActivity.class).setup().get();
         assertTrue(shown(activity,GuidanceActivity.BADGE));
         assertTrue(shown(activity,"Vehicle SDK: 연결 전"));
         assertTrue(shown(activity,"NaviHelper SDK: 연결 전"));
+        assertTrue(shown(activity,"SpeechToText SDK: 준비 전"));
+        assertTrue(shown(activity,"속도: 모름"));
         assertTrue(shown(activity,"연결 안 됨"));
     }
     @Test public void sdkEventsReachTheRulesAndTheQuestionIsAnswerable() {
@@ -50,9 +54,9 @@ public class GuidanceActivityTest {
         PleosBridge bridge=activity.bridge();
         bridge.onSelected(VehicleGear.GEAR_DRIVE);
         bridge.onTurnSignalStateUpdated(TurnSignalValue.OFF);
-        bridge.onTBTInfo(Collections.singletonList(new TBTInfo(TurnType.TURN_EXIT_IC_L,100.0,"강변북로 진출")));
+        bridge.onTBTInfo(Collections.singletonList(tbt(TurnType.TURN_EXIT_IC_L,100.0,"강변북로 진출")));
         settle();
-        assertTrue(shown(activity,"왼쪽 출구"));
+        assertTrue(shown(activity,"왼쪽 출구 · 강변북로 진출"));
         assertTrue(shown(activity,"100m"));
         bridge.onReRouteEnded();
         bridge.onSelected(VehicleGear.GEAR_PARK);
@@ -61,12 +65,43 @@ public class GuidanceActivityTest {
         press(activity,"네, 놓쳤어요");settle();
         assertTrue(shown(activity,"기억 지점: 1곳"));
         assertEquals(false,shown(activity,"아까 그 출구, 놓치셨나요?"));
+        // Behind the question waits the trip summary.
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(2));settle();
+        assertTrue(shown(activity,"오늘 주행 요약"));
+        assertTrue(shown(activity,"놓침 후보 1"));
     }
-    @Test public void turnTypesMapOntoTheRules() {
+    @Test public void speedAndTheSecondTurnChangeTheSentence() {
+        GuidanceActivity activity=Robolectric.buildActivity(GuidanceActivity.class).setup().get();
+        PleosBridge bridge=activity.bridge();
+        kr.routememory.core.DriveCoach.chooseWeak(activity.session().profile(),kr.routememory.core.DriveCoach.TurnType.ROUNDABOUT);
+        bridge.onSelected(VehicleGear.GEAR_DRIVE);
+        bridge.onSpeedKph(110);settle();
+        assertTrue(shown(activity,"속도: 110 km/h"));
+        // 110 km/h: 300 m becomes 550 m, so 500 m is already inside, and the sentence is the short one.
+        bridge.onTBTInfo(Arrays.asList(tbt(TurnType.TURN_ENTER_ROUNDABOUT_03,500.0,""),tbt(TurnType.TURN_LEFT,900.0,"")));
+        settle();
+        assertTrue(shown(activity,"회전교차로, 3시 방향 출구."));
+        assertTrue(shown(activity,"판단 거리: 550m"));
+    }
+    @Test public void turnTypesAndDetailsMapOntoTheRules() {
         assertEquals(kr.routememory.core.DriveCoach.TurnType.EXIT_RIGHT,PleosBridge.map(TurnType.TURN_EXIT_IC_R));
         assertEquals(kr.routememory.core.DriveCoach.TurnType.ROUNDABOUT,PleosBridge.map(TurnType.TURN_ENTER_ROUNDABOUT_04));
         assertEquals(kr.routememory.core.DriveCoach.TurnType.TURN_LEFT,PleosBridge.map(TurnType.TURN_SHARP_L));
         assertEquals(null,PleosBridge.map(TurnType.TURN_STRAIGHT));
         assertEquals("exit_left|강변북로 진출",PleosBridge.placeId(kr.routememory.core.DriveCoach.TurnType.EXIT_LEFT," 강변북로 진출 "));
+        assertEquals("10시 방향 출구",PleosBridge.detail(TurnType.TURN_ENTER_ROUNDABOUT_10,"회전교차로"));
+        assertEquals("강변북로 진출",PleosBridge.detail(TurnType.TURN_EXIT_IC_L,"강변북로 진출"));
+        assertEquals(null,PleosBridge.detail(TurnType.TURN_EXIT_IC_L,"왼쪽 출구"));
+        assertEquals(null,PleosBridge.detail(TurnType.TURN_LEFT,""));
+    }
+    @Test public void aMemoButtonRemembersTheCurrentTurn() {
+        GuidanceActivity activity=Robolectric.buildActivity(GuidanceActivity.class).setup().get();
+        PleosBridge bridge=activity.bridge();
+        bridge.onSelected(VehicleGear.GEAR_DRIVE);
+        bridge.onTBTInfo(Collections.singletonList(tbt(TurnType.TURN_KEEP_R,400.0,"올림픽대로 방면")));
+        settle();
+        press(activity,"여기 헷갈려");settle();
+        assertTrue(shown(activity,"기억해 둘게요. 여기 헷갈려"));
+        assertTrue(kr.routememory.core.DriveCoach.remembers(activity.session().profile(),"keep_right|올림픽대로 방면"));
     }
 }
