@@ -6,7 +6,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Route Memory - real road map and GPS
+echo Driver Learning - real road map and GPS
 echo Starting local server at http://127.0.0.1:4173
 echo Keep this window open. Close it to stop the server.
 if exist ".env.local" (

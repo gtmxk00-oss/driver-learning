@@ -111,7 +111,7 @@ final class MemoryCarScreen extends Screen implements DefaultLifecycleObserver {
                 .addText(state.routeSummary(state.route)).build())
             .addAction(parkedAction("주행 시연",()->getScreenManager().push(new BriefScreen(getCarContext(),false))))
             .addAction(parkedAction("실수 학습 시연",()->getScreenManager().push(new BriefScreen(getCarContext(),true))));
-        return new PaneTemplate.Builder(p.build()).setTitle("길기억 · 정차 중 준비")
+        return new PaneTemplate.Builder(p.build()).setTitle("운전자학습 · 정차 중 준비")
             .setHeaderAction(Action.BACK)
             .setActionStrip(new ActionStrip.Builder()
                 .addAction(parkedAction("실제 지도·GPS",()->getScreenManager().popToRoot()))
@@ -127,7 +127,7 @@ final class MemoryCarScreen extends Screen implements DefaultLifecycleObserver {
                 .addText("출구를 놓친 경우에만 다음 안내를 150m 앞당깁니다.").build())
             .addAction(parkedAction("출구를 놓쳤어요",()->state.review(true)))
             .addAction(parkedAction("의도한 변경이에요",()->state.review(false))).build();
-        return new PaneTemplate.Builder(p).setTitle("길기억 · 주행 돌아보기").setHeaderAction(Action.BACK).build();
+        return new PaneTemplate.Builder(p).setTitle("운전자학습 · 주행 돌아보기").setHeaderAction(Action.BACK).build();
     }
     private static Action parkedAction(String title,Runnable run) {
         return new Action.Builder().setTitle(title).setOnClickListener(ParkedOnlyOnClickListener.create(run::run)).build();

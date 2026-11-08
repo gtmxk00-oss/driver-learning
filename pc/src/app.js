@@ -220,7 +220,7 @@
   $('soundToggle').addEventListener('click',()=>{
     if(!('speechSynthesis'in window)){toast('이 브라우저는 음성 안내를 지원하지 않습니다.');return;}
     sound=!sound;$('soundToggle').setAttribute('aria-pressed',String(sound));$('soundToggle').setAttribute('aria-label',sound?'음성 안내 끄기':'음성 안내 켜기');$('soundLabel').textContent=sound?'음성 켜짐':'음성 꺼짐';
-    if(sound)say('길기억 음성 안내를 시작합니다.');else stopSpeech();
+    if(sound)say('운전자학습 음성 안내를 시작합니다.');else stopSpeech();
   });
   $('memoOpen').addEventListener('click',()=>{if(running()||needsReview())return;$('memoText').value=profile().notes['merge-c']||'';$('memoAvoid').checked=profile().avoid.includes('merge-c');$('memoDialog').showModal();});
   $('memoForm').addEventListener('submit',e=>{e.preventDefault();if(running()||needsReview())return;const p=profile();p.notes['merge-c']=$('memoText').value.trim().slice(0,200);p.avoid=p.avoid.filter(id=>id!=='merge-c');if($('memoAvoid').checked)p.avoid.push('merge-c');save();$('memoDialog').close();renderStatic();toast('메모를 저장했습니다. 경로 추천에 반영했어요.');});
@@ -232,7 +232,7 @@
   $('historyList').addEventListener('click',e=>{if(e.target.closest('[data-go-drive]'))setView('drive');});
   $('resetOpen').addEventListener('click',()=>{if(!running()&&!needsReview()&&!window.RMNavigatorUI?.isActive())$('resetDialog').showModal();});
   $('resetConfirm').addEventListener('click',()=>{if(running()||needsReview()||window.RMNavigatorUI?.isActive())return;profiles[active]=RM.createProfile(active,names[active]);history=history.filter(h=>h.profileId!==active);trip=null;tripMeta=null;window.RMNavigatorUI?.clearCurrentDriver();save();$('resetDialog').close();renderStatic();renderControls();renderLive();toast('현재 운전자의 기록을 초기화했습니다.');});
-  $('exportButton').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'Route Memory PC',version:1,profile:profile(),history:history.filter(h=>h.profileId===active),navigationHistory:window.RMNavigatorUI?.getRecords()||[]},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='RouteMemory-'+active+'-records.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+  $('exportButton').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({app:'Driver Learning PC',version:1,profile:profile(),history:history.filter(h=>h.profileId===active),navigationHistory:window.RMNavigatorUI?.getRecords()||[]},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='RouteMemory-'+active+'-records.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
   window.addEventListener('pagehide',()=>{save();stopSpeech();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&running())setPause(true);});
   restore();renderStatic();renderControls();renderLive();

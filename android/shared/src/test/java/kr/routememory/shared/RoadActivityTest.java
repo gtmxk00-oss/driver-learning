@@ -32,7 +32,7 @@ public final class RoadActivityTest {
     }
     private TextView find(Activity app,String label){return find(app.getWindow().getDecorView(),label);}
     @Test public void nativeScreenOpensWithoutStartingGps(){
-        RoadActivity app=open();assertNotNull(find(app,"길기억 · 경로 준비"));assertNotNull(find(app,"경로 탐색"));
+        RoadActivity app=open();assertNotNull(find(app,"운전자학습 · 경로 준비"));assertNotNull(find(app,"경로 탐색"));
         assertFalse(state.gpsEnabled);assertFalse(state.loading);assertNull(state.fix);
         assertNotNull(find(app,"GPS 연결"));assertNotNull(find(app,"경로 설정"));
     }

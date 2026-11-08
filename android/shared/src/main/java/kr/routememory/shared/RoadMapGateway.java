@@ -59,5 +59,5 @@ public final class RoadMapGateway {
         try{byte[] digest=MessageDigest.getInstance("SHA-256").digest(origin.getBytes(StandardCharsets.UTF_8));StringBuilder value=new StringBuilder();for(int i=0;i<12;i++)value.append(String.format(Locale.ROOT,"%02x",digest[i]&255));return value.toString();}catch(Exception e){throw new IllegalStateException("SHA-256 unavailable");}
     }
     private static IOException invalidOrigin(){return new IOException("경로·키가 없는 HTTPS 서버 주소를 입력하세요. USB 개발 연결은 http://127.0.0.1:4173 입니다");}
-    private static IOException invalidStatus(){return new IOException("길기억 지도 서버의 올바른 연결 상태를 받지 못했습니다");}
+    private static IOException invalidStatus(){return new IOException("운전자학습 지도 서버의 올바른 연결 상태를 받지 못했습니다");}
 }

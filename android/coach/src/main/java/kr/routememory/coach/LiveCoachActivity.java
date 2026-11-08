@@ -112,7 +112,7 @@ public class LiveCoachActivity extends Activity {
         stage.addView(navi,wide?new LinearLayout.LayoutParams(0,-1,6):new LinearLayout.LayoutParams(-1,0,5));
 
         LinearLayout app=new LinearLayout(this);app.setOrientation(LinearLayout.VERTICAL);app.setBackgroundColor(p.surface);app.setPadding(dp(16),dp(12),dp(16),dp(12));
-        TextView brand=text(18,p.accentText,true);brand.setText("길기억");app.addView(brand);
+        TextView brand=text(18,p.accentText,true);brand.setText("운전자학습");app.addView(brand);
         tag=text(15,p.ink,true);app.addView(tag);chips=text(13,p.ink2,false);app.addView(chips);
         statusBox=new LinearLayout(this);statusBox.setOrientation(LinearLayout.VERTICAL);statusBox.setGravity(Gravity.CENTER_VERTICAL);statusBox.setPadding(dp(14),dp(10),dp(14),dp(10));
         statusLabel=text(12,p.ink2,true);status=text(18,p.ink,true);statusBox.addView(statusLabel);statusBox.addView(status);

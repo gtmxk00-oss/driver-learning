@@ -13,7 +13,7 @@
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
     </queries>
-    <application android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="false" android:label="길기억" android:icon="@drawable/ic_route">
+    <application android:allowBackup="false" android:fullBackupContent="false" android:dataExtractionRules="@xml/data_extraction_rules" android:usesCleartextTraffic="false" android:label="운전자학습" android:icon="@drawable/ic_route">
         <activity android:name="kr.routememory.shared.RoadActivity" android:exported="false" android:theme="@android:style/Theme.Material.NoActionBar" />
         <service android:name="kr.routememory.shared.LocationNavigationService" android:exported="false" android:foregroundServiceType="location" />
         <meta-data android:name="androidx.car.app.minCarApiLevel" android:value="1" />

@@ -6,7 +6,7 @@
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
     </queries>
     <application>
-        <activity android:name="kr.routememory.coach.CoachActivity" android:exported="false" android:label="길기억 시연" />
-        <activity android:name="kr.routememory.coach.LiveCoachActivity" android:exported="false" android:label="길기억 실제 위치" />
+        <activity android:name="kr.routememory.coach.CoachActivity" android:exported="false" android:label="운전자학습 시연" />
+        <activity android:name="kr.routememory.coach.LiveCoachActivity" android:exported="false" android:label="운전자학습 실제 위치" />
     </application>
 </manifest>

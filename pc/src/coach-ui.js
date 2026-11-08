@@ -40,7 +40,7 @@
     return'<div class="coach-signal" aria-label="방향지시등">'+lamp('left','◀')+'<small>방향지시등</small>'+lamp('right','▶')+'</div>';
   }
   function card(state){
-    return'<div class="coach-card-scene"><div class="coach-card-brand">길기억</div><h2>'+esc(state.scene.title)+'</h2><p>'+esc(state.scene.lead)+'</p></div>';
+    return'<div class="coach-card-scene"><div class="coach-card-brand">운전자학습</div><h2>'+esc(state.scene.title)+'</h2><p>'+esc(state.scene.lead)+'</p></div>';
   }
   function drive(state){
     const status=statusOf(state),turn=state.scene.turn?C.turnTypes[state.scene.turn.type]:null;
@@ -48,7 +48,7 @@
     const distance=state.meters===null?'':state.meters+'m';
     const learned=state.learned||{weak:[],places:0};
     return'<div class="coach-navi"><div class="coach-navi-head"><span>가상 내비게이션</span><strong>'+esc(heading)+'</strong><b>'+esc(distance)+'</b></div><div class="coach-road-wrap">'+roadSvg(state)+'</div>'+signalHtml(state)+'</div>'+
-      '<aside class="coach-app"><div class="coach-app-brand">길기억</div><div class="coach-tag">'+esc(state.scene.tag)+'</div><div class="coach-chips"><span>'+esc(state.driver.label)+' 유형</span><span class="'+(state.passenger?'on':'')+'">'+(state.passenger?'승객 탑승':'승객 없음')+'</span></div>'+
+      '<aside class="coach-app"><div class="coach-app-brand">운전자학습</div><div class="coach-tag">'+esc(state.scene.tag)+'</div><div class="coach-chips"><span>'+esc(state.driver.label)+' 유형</span><span class="'+(state.passenger?'on':'')+'">'+(state.passenger?'승객 탑승':'승객 없음')+'</span></div>'+
       '<div class="coach-status '+status.key+'"><small>'+esc(status.label)+'</small><p>'+esc(status.text)+'</p></div>'+
       '<dl class="coach-facts"><div><dt>약한 유형</dt><dd>'+esc(learned.weak.join(', ')||'없음')+'</dd></div><div><dt>기억 지점</dt><dd>'+learned.places+'곳</dd></div><div><dt>판단 거리</dt><dd>'+(state.limit?state.limit+'m':'-')+'</dd></div></dl></aside>';
   }

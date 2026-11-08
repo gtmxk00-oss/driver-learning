@@ -59,9 +59,9 @@ public final class CoachDemo {
     private static final List<Scene> SCENES=build();
     private static List<Scene> build() {
         List<Scene> list=new ArrayList<>();
-        list.add(card("intro","길기억","놓친 길을 기억해, 필요할 때만 말합니다",13,"길기억은 운전자가 놓친 곳과 약한 회전 유형을 기억해, 필요할 때만 말하는 차량용 앱입니다. 판단 기능은 가상 신호로 시연합니다."));
+        list.add(card("intro","운전자학습","놓친 길을 기억해, 필요할 때만 말합니다",13,"운전자학습은 운전자가 놓친 곳과 약한 회전 유형을 기억해, 필요할 때만 말하는 차량용 앱입니다. 판단 기능은 가상 신호로 시연합니다."));
         list.add(parked("setup","시작 · 프로필","starter",5,19,"시작할 때 운전자와 차량 프로필을 고릅니다. 어려운 유형을 직접 고르면 기록이 쌓이기 전부터 적용됩니다. 오른쪽 창은 내비게이션 옆에 두는 작은 기억 카드입니다."));
-        list.add(drive("miss-1","일반 · 평소 주행",DriverType.GENERAL,"exit-a",TurnType.EXIT_LEFT,900,5,Outcome.MISS,20,"왼쪽 출구를 놓치면 내비게이션이 재탐색합니다. 길기억은 주행 중에 끼어들지 않고, 정차한 뒤 운전자에게 확인합니다."));
+        list.add(drive("miss-1","일반 · 평소 주행",DriverType.GENERAL,"exit-a",TurnType.EXIT_LEFT,900,5,Outcome.MISS,20,"왼쪽 출구를 놓치면 내비게이션이 재탐색합니다. 운전자학습은 주행 중에 끼어들지 않고, 정차한 뒤 운전자에게 확인합니다."));
         list.add(drive("decline","일반 · 일부러 바꾼 길",DriverType.GENERAL,"exit-x",TurnType.EXIT_LEFT,900,4,Outcome.DECLINE,16,"일부러 길을 바꿨다면 아니요라고 답하면 됩니다. 아무것도 기록하지 않습니다."));
         list.add(drive("miss-2","일반 · 다른 길",DriverType.GENERAL,"exit-b",TurnType.EXIT_LEFT,900,4,Outcome.MISS,17,"다른 길에서도 왼쪽 출구를 놓쳤다고 확인하면, 왼쪽 출구가 이 운전자의 약한 유형이 됩니다."));
         list.add(drive("speak","일반 · 첫 출장길",DriverType.GENERAL,"exit-c",TurnType.EXIT_LEFT,1000,6,Outcome.PASS,15,"처음 가는 길이어도 약한 유형이 다가오는데 방향지시등이 꺼져 있으면, 한 문장으로 알립니다."));
@@ -84,7 +84,7 @@ public final class CoachDemo {
         memo.narration="새 노선에 배치된 기사가 헷갈린 곳에서 음성으로 메모를 남깁니다.";list.add(memo);
         Scene remind=new Scene();remind.id="bus-remind";remind.tag="버스 · 다음 운행";remind.driver=DriverType.BUS;remind.point="bus-point";remind.from=400;remind.driveSeconds=5;remind.pointMeters=300;remind.noRoute=true;remind.passenger=true;remind.seconds=14;
         remind.narration="내비게이션 경로가 없어도, 다음 운행 때 그 지점에 다가가면 위치를 기준으로 알립니다.";list.add(remind);
-        list.add(card("outro","사람, 차량, 업무에 맞춰 말합니다","판단 기능은 가상 시연이며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다",14,"길기억은 사람과 차량, 업무에 맞춰 말합니다. 판단 기능은 아직 가상 신호로 시연하며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다."));
+        list.add(card("outro","사람, 차량, 업무에 맞춰 말합니다","판단 기능은 가상 시연이며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다",14,"운전자학습은 사람과 차량, 업무에 맞춰 말합니다. 판단 기능은 아직 가상 신호로 시연하며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다."));
         return Collections.unmodifiableList(list);
     }
     public static List<Scene> scenes(){return SCENES;}

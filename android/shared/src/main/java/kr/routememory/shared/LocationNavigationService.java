@@ -29,7 +29,7 @@ public final class LocationNavigationService extends Service implements Location
         notifications.createNotificationChannel(new NotificationChannel("road_navigation","GPS 길 안내",NotificationManager.IMPORTANCE_LOW));
         PendingIntent stop=PendingIntent.getService(this,42,new Intent(this,LocationNavigationService.class).setAction("kr.routememory.STOP_GPS"),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder=new Notification.Builder(this,"road_navigation").setSmallIcon(R.drawable.ic_route)
-            .setContentTitle("길기억 · GPS 사용 중").setContentText("현재 위치 수신 중 · 누적 위치 기록 저장 안 함")
+            .setContentTitle("운전자학습 · GPS 사용 중").setContentText("현재 위치 수신 중 · 누적 위치 기록 저장 안 함")
             .setOngoing(true).setCategory(Notification.CATEGORY_NAVIGATION)
             .addAction(new Notification.Action.Builder(null,"GPS 종료",stop).build());
         Intent launch=getPackageManager().getLaunchIntentForPackage(getPackageName());

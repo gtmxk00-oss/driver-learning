@@ -59,7 +59,7 @@ public final class MainActivity extends Activity {
         scroll.setOnApplyWindowInsetsListener((v,insets)->{
             v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;
         });
-        TextView brand=text("↱  길기억",26,ACCENT);brand.setTypeface(null,Typeface.BOLD);page.addView(brand);
+        TextView brand=text("↱  운전자학습",26,ACCENT);brand.setTypeface(null,Typeface.BOLD);page.addView(brand);
         space(page,6);page.addView(text("나의 운전 · 개인화 시연",12,MUTED));space(page,24);
         if(state.running()){driving();return;}
         if(state.needsReview()){review();return;}

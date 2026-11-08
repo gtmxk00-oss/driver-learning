@@ -9,13 +9,13 @@
   const QUESTION_SECONDS = 3.2, RESULT_SECONDS = 1, REROUTE_SECONDS = 1.2, PASSENGER_LEAVES_SECONDS = 1.6, SPEAK_SECONDS = 4.4;
   const ROUTE_TO_HOSPITAL = Object.freeze([{ id: 'h-1', label: '강변 합류' }, { id: 'h-2', label: '다리 앞 분기' }, { id: 'h-3', label: '시장 앞 출구' }, { id: 'h-4', label: '병원 앞 회전' }]);
   const scenes = Object.freeze([
-    { id: 'intro', card: true, title: '길기억', lead: '놓친 길을 기억해, 필요할 때만 말합니다', seconds: 13,
-      narration: '길기억은 운전자가 놓친 곳과 약한 회전 유형을 기억해, 필요할 때만 말하는 차량용 앱입니다. 판단 기능은 가상 신호로 시연합니다.' },
+    { id: 'intro', card: true, title: '운전자학습', lead: '놓친 길을 기억해, 필요할 때만 말합니다', seconds: 13,
+      narration: '운전자학습은 운전자가 놓친 곳과 약한 회전 유형을 기억해, 필요할 때만 말하는 차량용 앱입니다. 판단 기능은 가상 신호로 시연합니다.' },
     { id: 'setup', tag: '시작 · 프로필', driver: 'general', who: 'starter', parked: true, noRoute: true, narrateAt: 5, seconds: 19,
       narration: '시작할 때 운전자와 차량 프로필을 고릅니다. 어려운 유형을 직접 고르면 기록이 쌓이기 전부터 적용됩니다. 오른쪽 창은 내비게이션 옆에 두는 작은 기억 카드입니다.' },
     { id: 'miss-1', tag: '일반 · 평소 주행', driver: 'general', turn: { id: 'exit-a', type: 'exit-left' }, from: 900, driveSeconds: 5,
       outcome: 'miss', question: '아까 그 출구, 놓치셨나요?', seconds: 20,
-      narration: '왼쪽 출구를 놓치면 내비게이션이 재탐색합니다. 길기억은 주행 중에 끼어들지 않고, 정차한 뒤 운전자에게 확인합니다.' },
+      narration: '왼쪽 출구를 놓치면 내비게이션이 재탐색합니다. 운전자학습은 주행 중에 끼어들지 않고, 정차한 뒤 운전자에게 확인합니다.' },
     { id: 'decline', tag: '일반 · 일부러 바꾼 길', driver: 'general', turn: { id: 'exit-x', type: 'exit-left' }, from: 900, driveSeconds: 4,
       outcome: 'decline', question: '아까 그 출구, 놓치셨나요?', seconds: 16,
       narration: '일부러 길을 바꿨다면 아니요라고 답하면 됩니다. 아무것도 기록하지 않습니다.' },
@@ -54,7 +54,7 @@
     { id: 'bus-remind', tag: '버스 · 다음 운행', driver: 'bus', point: 'bus-point', from: 400, driveSeconds: 5, pointMeters: 300, noRoute: true, passenger: true, seconds: 14,
       narration: '내비게이션 경로가 없어도, 다음 운행 때 그 지점에 다가가면 위치를 기준으로 알립니다.' },
     { id: 'outro', card: true, title: '사람, 차량, 업무에 맞춰 말합니다', lead: '판단 기능은 가상 시연이며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다', seconds: 14,
-      narration: '길기억은 사람과 차량, 업무에 맞춰 말합니다. 판단 기능은 아직 가상 신호로 시연하며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다.' }
+      narration: '운전자학습은 사람과 차량, 업무에 맞춰 말합니다. 판단 기능은 아직 가상 신호로 시연하며, Pleos Connect SDK 연동은 2차 심사 전까지 진행합니다.' }
   ].map(Object.freeze));
 
   function seedProfiles() {

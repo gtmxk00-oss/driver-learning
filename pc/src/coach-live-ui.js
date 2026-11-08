@@ -72,7 +72,7 @@
     const metrics=row('정확도',fix?'±'+Math.round(fix.accuracy)+'m':'-')+row('마지막 갱신',fix?Math.max(0,Math.round(st.ageMs/1000))+'초 전':'-')+
       row('위치',fix?fix.lat.toFixed(5)+', '+fix.lon.toFixed(5):'-')+row('가장 가까운 기억 지점',near?near.point.label+' · '+Math.round(near.meters)+'m':'없음');
     $('coachStage').innerHTML='<div class="coach-badge">'+BADGE+'</div><div class="coach-screen"><div class="coach-navi"><div class="coach-navi-head"><span>현재 위치</span><strong>'+esc(headline)+'</strong><b>'+esc(kmh)+'</b></div><dl class="coach-live-body">'+metrics+'</dl></div>'+
-      '<aside class="coach-app"><div class="coach-app-brand">길기억</div><div class="coach-tag">실제 위치 · '+esc(driver.label)+'</div><div class="coach-chips"><span>'+esc(driver.label)+' 유형</span><span class="'+(active()?'on':'')+'">'+(active()?'위치 켜짐':'위치 꺼짐')+'</span></div>'+
+      '<aside class="coach-app"><div class="coach-app-brand">운전자학습</div><div class="coach-tag">실제 위치 · '+esc(driver.label)+'</div><div class="coach-chips"><span>'+esc(driver.label)+' 유형</span><span class="'+(active()?'on':'')+'">'+(active()?'위치 켜짐':'위치 꺼짐')+'</span></div>'+
       '<div class="coach-status '+esc(status.key)+'"><small>'+esc(status.label)+'</small><p>'+esc(status.text)+'</p></div>'+
       '<dl class="coach-facts"><div><dt>기억 지점</dt><dd>'+session.points.length+'곳</dd></div><div><dt>판단 거리</dt><dd>'+limit+'m</dd></div><div><dt>알림 조건</dt><dd>주행 중 · 정확도 ±'+L.TRUSTED_ACCURACY+'m 이내</dd></div></dl></aside></div>';
     $('liveToggle').textContent=active()?'위치 끄기':'위치 켜기';

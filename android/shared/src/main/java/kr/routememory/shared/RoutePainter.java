@@ -29,7 +29,7 @@ public final class RoutePainter {
         c.drawCircle(cx,carY,19,p); p.setColor(Color.rgb(12,24,36));
         Path arrow=new Path(); arrow.moveTo(cx,carY-11); arrow.lineTo(cx-8,carY+9); arrow.lineTo(cx+8,carY+9); arrow.close(); c.drawPath(arrow,p);
         p.setColor(Color.WHITE); p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-        p.setTextSize(Math.max(17,Math.min(24,w/28))); c.drawText("길기억  /  ROUTE MEMORY",24,40,p);
+        p.setTextSize(Math.max(17,Math.min(24,w/28))); c.drawText("운전자학습  /  ROUTE MEMORY",24,40,p);
         p.setColor(Color.rgb(160,181,196)); p.setTextSize(Math.max(14,Math.min(19,w/35)));
         c.drawText("가상 경로 · GPS 미사용",24,h-20,p);
         if(state.trip!=null) {
