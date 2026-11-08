@@ -242,7 +242,7 @@ test('the briefing scene speaks three of the four points on the route', () => {
   assert.ok(D.events().some(event => event.kind === 'alert' && event.text === step.text));
 });
 test("the parent's memo is kept and the child hears nothing there", () => {
-  assert.ok(sceneAt('family', 0.1).places > sceneAt('memo', 0.1).places);
+  assert.ok(sceneAt('erase', 0.1).places > sceneAt('memo', 0.1).places);
   const child = sceneAt('family', 4.5);
   assert.equal(child.decision.action, 'none');
   assert.equal(child.spoken, '');
