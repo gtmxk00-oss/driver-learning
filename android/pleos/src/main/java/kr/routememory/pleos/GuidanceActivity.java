@@ -75,12 +75,15 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host {
     private void build() {
         boolean wide=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(p.canvas);
-        TextView badge=text(13,p.ink,true);badge.setText(BADGE);badge.setPadding(dp(16),dp(10),dp(16),dp(6));root.addView(badge);
+        // The Pleos home screen draws its own close button over the top-left corner of a task; the two top rows keep clear of it.
+        int closeInset=dp(72);
+        TextView badge=text(13,p.ink,true);badge.setText(BADGE);badge.setPadding(closeInset,dp(10),dp(16),dp(6));root.addView(badge);
         LinearLayout stage=new LinearLayout(this);stage.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
         root.addView(stage,new LinearLayout.LayoutParams(-1,0,1));
 
-        LinearLayout navi=new LinearLayout(this);navi.setOrientation(LinearLayout.VERTICAL);navi.setBackgroundColor(SIM_BG);
-        LinearLayout head=new LinearLayout(this);head.setBackgroundColor(SIM_PANEL);head.setPadding(dp(18),dp(14),dp(18),dp(14));head.setGravity(Gravity.CENTER_VERTICAL);
+        // Bottom-aligned: while driving, the Pleos emulator lays its camera preview over the top-left of the task.
+        LinearLayout navi=new LinearLayout(this);navi.setOrientation(LinearLayout.VERTICAL);navi.setBackgroundColor(SIM_BG);navi.setGravity(Gravity.BOTTOM);
+        LinearLayout head=new LinearLayout(this);head.setBackgroundColor(SIM_PANEL);head.setPadding(closeInset,dp(14),dp(18),dp(14));head.setGravity(Gravity.CENTER_VERTICAL);
         headline=text(24,SIM_INK,true);distance=text(24,SIM_INK,true);
         head.addView(headline,new LinearLayout.LayoutParams(0,-2,1));head.addView(distance);navi.addView(head);
         metrics=text(15,SIM_INK2,false);metrics.setPadding(dp(18),dp(14),dp(18),dp(14));metrics.setLineSpacing(dp(6),1);navi.addView(metrics);

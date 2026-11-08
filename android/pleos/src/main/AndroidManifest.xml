@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-feature android:name="android.hardware.type.automotive" android:required="true" />
-    <!-- Pleos Connect SDK: read the turn signal (CAR_LIGHTS), gear and driving state (CAR_POWERTRAIN, CAR_DRIVE), navigation events (NAVI_ROUTE). -->
+    <!-- Pleos Connect SDK: read the turn signal (CAR_LIGHTS), gear and driving state (CAR_DRIVE), navigation events (NAVI_ROUTE).
+         Verified on Pleos Connect Emulator v2.1.0: these are granted at install and the gear arrives without CAR_POWERTRAIN, which that image does not define. -->
     <uses-permission android:name="pleos.car.permission.CAR_LIGHTS" />
-    <uses-permission android:name="pleos.car.permission.CAR_POWERTRAIN" />
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
@@ -13,8 +13,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- One status line and one question: the only screen meant to stay up while driving. -->
-        <activity android:name="kr.routememory.pleos.GuidanceActivity" android:exported="false" android:label="길기억 차량 연동">
+        <!-- One status line and one question: the only screen meant to stay up while driving.
+             It roots its own task: the Pleos home screen judges a task by its root activity, so a task rooted in the
+             demo screen is covered with "주행 중에는 사용할 수 없습니다" as soon as the gear leaves P. -->
+        <activity android:name="kr.routememory.pleos.GuidanceActivity" android:exported="false" android:label="길기억 차량 연동"
+            android:taskAffinity="kr.routememory.pleos.guidance" android:launchMode="singleTask">
             <meta-data android:name="distractionOptimized" android:value="true" />
         </activity>
     </application>

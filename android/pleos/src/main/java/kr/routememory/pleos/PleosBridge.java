@@ -27,8 +27,19 @@ import kr.routememory.core.GuidanceSession.Outcome;
  * Connects the Pleos Connect SDKs to the companion's rules. Vehicle SDK gives the turn signal and the gear;
  * NaviHelper gives the next turn, reroutes, caution points and the navigation state. Everything the rules decide
  * comes back to the host on the main thread. Speed is not read here: the rules only need distance, signal and gear.
+ * The Vehicle SDK routes an event by the listener's type, not by the property: one object registered for both the
+ * turn signal and the gear receives the turn signal as a gear (seen on the official emulator: LEFT arrived as
+ * GEAR_REVERSE). So each property gets its own listener object.
  */
-public final class PleosBridge implements TurnSignalStateListener, GearSelectionListener, NaviHelperEventListener {
+public final class PleosBridge implements NaviHelperEventListener {
+    private final TurnSignalStateListener signalListener=new TurnSignalStateListener() {
+        @Override public void onTurnSignalStateUpdated(TurnSignalValue value){PleosBridge.this.onTurnSignalStateUpdated(value);}
+        @Override public void onFailed(Exception e){PleosBridge.this.onFailed(e);}
+    };
+    private final GearSelectionListener gearListener=new GearSelectionListener() {
+        @Override public void onSelected(VehicleGear value){PleosBridge.this.onSelected(value);}
+        @Override public void onFailed(Exception e){PleosBridge.this.onFailed(e);}
+    };
     public interface Host {
         void onLink(String vehicleState, String naviState);
         void onVehicle(Signal signal, String gear);
@@ -49,8 +60,8 @@ public final class PleosBridge implements TurnSignalStateListener, GearSelection
         if(vehicle==null) {
             try {
                 Vehicle v=new Vehicle(context);v.initialize();
-                v.getTurnSignal().registerTurnSignalState(this);
-                v.getGear().registerGearSelection(this);
+                v.getTurnSignal().registerTurnSignalState(signalListener);
+                v.getGear().registerGearSelection(gearListener);
                 vehicle=v;vehicleState="연결됨";
             } catch(Throwable e){vehicle=null;vehicleState="연결 실패: "+brief(e);}
         }
@@ -64,7 +75,7 @@ public final class PleosBridge implements TurnSignalStateListener, GearSelection
         host.onLink(vehicleState,naviState);
     }
     public void release() {
-        try{if(vehicle!=null){vehicle.getTurnSignal().unregisterTurnSignalState(this);vehicle.getGear().unregisterGearSelection(this);vehicle.release();}}catch(Throwable ignored){}
+        try{if(vehicle!=null){vehicle.getTurnSignal().unregisterTurnSignalState(signalListener);vehicle.getGear().unregisterGearSelection(gearListener);vehicle.release();}}catch(Throwable ignored){}
         try{if(navi!=null){navi.removeListener(this);navi.release();}}catch(Throwable ignored){}
         vehicle=null;navi=null;vehicleState="연결 해제";naviState="연결 해제";
         host.onLink(vehicleState,naviState);
@@ -74,15 +85,18 @@ public final class PleosBridge implements TurnSignalStateListener, GearSelection
     private static long now(){return System.currentTimeMillis();}
 
     // Vehicle SDK
-    @Override public void onTurnSignalStateUpdated(TurnSignalValue value) {
+    public void onTurnSignalStateUpdated(TurnSignalValue value) {
+        android.util.Log.d(TAG,"turn signal "+value);
         Signal s=value==TurnSignalValue.LEFT?Signal.LEFT:value==TurnSignalValue.RIGHT?Signal.RIGHT:Signal.OFF;
         post(()->{host.onVehicle(s,gear);host.onOutcome(session.onSignal(s,now()),"signal");});
     }
-    @Override public void onSelected(VehicleGear value) {
+    public void onSelected(VehicleGear value) {
+        android.util.Log.d(TAG,"gear "+value);
         boolean parked=value==VehicleGear.GEAR_PARK;
         post(()->{gear=value.name().replace("GEAR_","");host.onVehicle(session.signal(),gear);host.onOutcome(session.onGear(parked,now()),"gear");});
     }
-    @Override public void onFailed(Exception e){post(()->{vehicleState="오류: "+brief(e);host.onLink(vehicleState,naviState);});}
+    private static final String TAG="PleosBridge";
+    public void onFailed(Exception e){post(()->{vehicleState="오류: "+brief(e);host.onLink(vehicleState,naviState);});}
 
     // NaviHelper SDK
     /** Pleos turn types onto the companion's turn types; anything else is not a turn the rules know. */

@@ -12,10 +12,10 @@
 | 동반앱 시연 화면 (PC, Android) | 구현, 가상 신호로 동작 |
 | 동반앱 실제 위치 모드 (PC, Android) | 구현. 이 기기의 GPS로 위치·속도·정확도를 실시간 표시하고, 저장한 기억 지점에 다가가면 음성으로 알립니다. 방향지시등·내비게이션 정보는 아직 받지 못합니다 |
 | 실제 지도, 장소 검색, 경로, 주변 주유소·주차장, 위성지도 (PC, Android 시제품) | 구현, 공개 지도 서비스 사용. 실유가·주차 잔여 면수·고화질 항공영상·실시간 교통은 연결 전 |
-| Pleos Connect SDK 연동 (Vehicle 2.3.2, NaviHelper 3.0.5) | 연동 코드 구현. 방향지시등·기어는 Vehicle SDK, 다음 회전·재탐색·주의 지점·내비 상태는 NaviHelper SDK에서 받아 판단 규칙(`GuidanceSession`)에 연결했습니다. 단위 테스트는 통과했고, 공식 Pleos Emulator와 실차에서는 아직 돌려 보지 못했습니다 |
-| 표준 AAOS 에뮬레이터 (Android 15, API 35) | release APK 설치, 실행, 전체 장면 재생 확인 |
-| Pleos Connect Emulator, 실차 구동 | 미검증. 표준 AAOS 에뮬레이터에는 Pleos 서비스가 없어 차량 연동 화면이 "연결 실패"를 표시합니다 |
-| 주행 중 동작 | 차량 연동 화면만 DO(distractionOptimized)를 선언해 주행 중에도 남습니다. 시연·실제 위치 화면은 주행 상태가 되면 시스템이 차단하고 정차하면 돌아옵니다. CarUxRestrictions에 따른 화면 축소는 아직 없습니다 |
+| Pleos Connect SDK 연동 (Vehicle 2.3.2, NaviHelper 3.0.5) | 구현. 방향지시등·기어는 Vehicle SDK, 다음 회전·재탐색·주의 지점·내비 상태는 NaviHelper SDK에서 받아 판단 규칙(`GuidanceSession`)에 연결했습니다. 단위 테스트 통과 |
+| Pleos Connect Emulator v2.1.0 (Android 14, API 34) | release APK 설치·실행 확인. 차량 연동 화면에서 Vehicle SDK·NaviHelper SDK 모두 연결되고, Virtual Console로 넣은 방향지시등(좌·우·끄기)과 기어(P·D)가 그대로 수신됩니다. 내비 경로를 실제로 시작해 다음 회전(TBT)을 받는 것은 아직 확인하지 못했습니다 |
+| 실차 구동 | 미검증 |
+| 주행 중 동작 | 차량 연동 화면만 DO(distractionOptimized)를 선언하고 자기 태스크로 열려서, 기어를 D로 바꿔도 Pleos 홈 화면이 차단하지 않는 것을 에뮬레이터에서 확인했습니다. 시연·실제 위치 화면은 주행 상태가 되면 시스템이 차단하고 정차하면 돌아옵니다. CarUxRestrictions에 따른 화면 축소는 아직 없습니다 |
 
 시연 화면의 차량 신호와 내비게이션 정보는 모두 시뮬레이션입니다. 실제 위치 모드는 위치만 실제이고 방향지시등과 내비게이션 정보는 없습니다. 두 화면 모두 이 사실을 항상 표시합니다.
 
@@ -26,7 +26,7 @@
 | `android/` | Android Gradle 프로젝트 |
 | `android/core/` | 판단 규칙 `DriveCoach`, 실제 이벤트를 판단으로 바꾸는 `GuidanceSession`, 실제 위치 규칙 `LiveCoach`, 시연 장면 `CoachDemo` (순수 Java) |
 | `android/coach/` | 동반앱 시연 화면과 실제 위치 모드 |
-| `android/pleos/` | 제출용 앱. Pleos SDK 브릿지(`PleosBridge`)와 차량 연동 화면(`GuidanceActivity`)이 여기 있습니다. 위치 권한은 실제 위치 모드를 켤 때만 요청하고, 차량 권한은 Pleos의 `CAR_LIGHTS`·`CAR_POWERTRAIN`·`CAR_DRIVE`·`NAVI_ROUTE`·`NAVI_ROUTE_SEARCH`를 선언합니다. 네트워크 권한은 쓰지 않습니다 |
+| `android/pleos/` | 제출용 앱. Pleos SDK 브릿지(`PleosBridge`)와 차량 연동 화면(`GuidanceActivity`)이 여기 있습니다. 위치 권한은 실제 위치 모드를 켤 때만 요청하고, 차량 권한은 Pleos의 `CAR_LIGHTS`·`CAR_DRIVE`·`NAVI_ROUTE`·`NAVI_ROUTE_SEARCH`를 선언합니다. 네트워크 권한은 쓰지 않습니다 |
 | `android/shared/`, `mobile/`, `automotive/` | 이전 단계의 지도 내비게이션 시제품 |
 | `pc/` | PC 웹 시연. `src/coach.js`가 Android와 같은 규칙입니다 |
 | `apk/` | 실행용 release APK |
@@ -74,12 +74,12 @@ cd android
 ## 테스트 환경 및 필요한 설정
 
 - Android 10(API 29) 이상. 앱은 Automotive 기기를 대상으로 선언되어 있습니다.
-- 실행 확인 환경: Android Automotive 에뮬레이터 (Android 15, API 35, x86_64, 1024×768). 시연은 정차 상태에서 합니다.
+- 실행 확인 환경: Pleos Connect Emulator v2.1.0 (Android 14, API 34, x86_64, 2560×1440, 콜드 부트). 가상 시연은 정차 상태에서 하고, 차량 연동 화면은 주행 상태에서도 남습니다.
 - 빌드 도구: Gradle 8.11.1, Android Gradle Plugin 8.9.1, Java 17
 - 자동 테스트: JUnit, Robolectric, Node.js 내장 테스트
 - 음성 알림은 기기의 Android 음성 합성을 사용합니다. 한국어 음성이 없으면 화면으로만 표시됩니다.
 - 실제 위치 모드는 위치 권한이 필요합니다. 위치는 기기 밖으로 보내지 않고, 기억 지점은 기기(브라우저)에만 저장됩니다.
-- API 키나 계정 설정은 필요하지 않습니다. 차량 연동 화면을 실제로 쓰려면 Pleos Playground에서 받은 Pleos Connect Emulator가 필요합니다.
+- API 키나 계정 설정은 필요하지 않습니다. 차량 연동 화면을 실제로 쓰려면 Pleos Connect Emulator(Pleos Playground 문서의 SDK 사이트로 설치, 콜드 부트)가 필요하고, 방향지시등·기어는 에뮬레이터의 Virtual Console(`adb forward tcp:8088 tcp:8088` 후 `http://127.0.0.1:8088/`)에서 넣습니다.
 
 ## APK 파일 위치
 
