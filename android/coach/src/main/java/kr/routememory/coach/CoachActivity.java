@@ -49,7 +49,7 @@ public class CoachActivity extends Activity {
     private final double total=CoachDemo.total();
     private double position; private long lastTick; private boolean playing;
     private TextToSpeech voice; private boolean voiceReady;
-    private TextView tag,chips,status,statusLabel,facts,headline,distance,caption;
+    private TextView tag,chips,status,statusLabel,facts,headline,distance,caption,laneText; private LinearLayout lanes;
     private Button play; private LinearLayout statusBox,sceneBar; private RoadView road;
     private final Runnable tick=this::onTick;
 
@@ -96,6 +96,7 @@ public class CoachActivity extends Activity {
         LinearLayout head=new LinearLayout(this);head.setBackgroundColor(SIM_PANEL);head.setPadding(dp(18),dp(14),dp(18),dp(14));head.setGravity(Gravity.CENTER_VERTICAL);
         headline=text(24,SIM_INK,true);distance=text(24,SIM_INK,true);
         head.addView(headline,new LinearLayout.LayoutParams(0,-2,1));head.addView(distance);navi.addView(head);
+        navi.addView(lanesRow());
         road=new RoadView(this);navi.addView(road,new LinearLayout.LayoutParams(-1,0,1));
         stage.addView(navi,wide?new LinearLayout.LayoutParams(0,-1,6):new LinearLayout.LayoutParams(-1,0,5));
 
@@ -160,18 +161,34 @@ public class CoachActivity extends Activity {
     private void statusView(int background,int label,int body,String labelText,String bodyText) {
         statusBox.setBackground(round(background,12));statusLabel.setTextColor(label);status.setTextColor(body);statusLabel.setText(labelText);status.setText(keepWords(bodyText));
     }
+    /** The lane strip under the turn: four lanes, the one to be in lit, and a word on when to move. */
+    private LinearLayout lanesRow() {
+        LinearLayout row=new LinearLayout(this);row.setBackgroundColor(SIM_PANEL);row.setPadding(dp(18),0,dp(18),dp(12));row.setGravity(Gravity.CENTER_VERTICAL);
+        TextView label=text(12,SIM_INK2,true);label.setText("추천 차선");label.setPadding(0,0,dp(10),0);row.addView(label);
+        lanes=new LinearLayout(this);
+        for(int i=0;i<4;i++){View v=new View(this);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(22),dp(9));lp.rightMargin=dp(3);v.setBackground(round(SIM_LANE,3));lanes.addView(v,lp);}
+        row.addView(lanes);
+        laneText=text(14,SIM_INK,true);laneText.setPadding(dp(10),0,0,0);row.addView(laneText,new LinearLayout.LayoutParams(0,-2,1));
+        return row;
+    }
+    private void showLanes(DriveCoach.LaneHint h,boolean hidden) {
+        ((View)lanes.getParent()).setVisibility(hidden?View.GONE:View.VISIBLE);
+        for(int i=0;i<4;i++){boolean on=h.side==DriveCoach.LaneSide.LEFT&&i==0||h.side==DriveCoach.LaneSide.RIGHT&&i==3;lanes.getChildAt(i).setBackground(round(on?SIM_ROUTE:SIM_LANE,3));}
+        laneText.setText(h.text);
+    }
     private void render() {
         CoachDemo.State s=CoachDemo.stateAt(position);
         caption.setText(s.scene.narration);
         for(int i=0;i<sceneBar.getChildCount();i++)sceneBar.getChildAt(i).setBackground(round(i==s.index?p.accentSoft:p.surface2,10));
         road.show(s);
         if(s.phase==CoachDemo.Phase.CARD) {
-            headline.setText(s.scene.title);distance.setText("");tag.setText(s.scene.lead);chips.setText("");facts.setText("");
+            headline.setText(s.scene.title);distance.setText("");tag.setText(s.scene.lead);chips.setText("");facts.setText("");showLanes(DriveCoach.laneHint(null,-1,0),true);
             statusView(p.surface2,p.ink2,p.ink,"안내","재생을 누르면 장면이 이어집니다");return;
         }
         DriveCoach.TurnType type=s.scene.turn==null?null:s.scene.turn.type;
         headline.setText(s.phase==CoachDemo.Phase.PARKED?"정차 중":s.scene.noRoute?"내비게이션 경로 없음":type.label);
         distance.setText(s.meters<0?"":s.meters+"m");
+        showLanes(DriveCoach.laneHint(s.scene.turn,s.meters,s.limit),s.phase==CoachDemo.Phase.PARKED||s.scene.noRoute);
         tag.setText(s.scene.tag);
         chips.setText(s.scene.driver.label+" 유형 · "+(s.passenger?"승객 탑승":"승객 없음"));
         facts.setText("약한 유형: "+(s.weak.isEmpty()?"없음":String.join(", ",s.weak))+"\n기억 지점: "+s.places+"곳 · 판단 거리: "+(s.limit>0?s.limit+"m":"-"));

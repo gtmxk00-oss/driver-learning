@@ -94,6 +94,12 @@
     ()=>sendTurn('turn-left',400,'시장 앞'),()=>setSignal('left'),()=>sendTurn('turn-left',50,'시장 앞'),()=>setSignal('off'),
     ()=>sendTurn(turnOf(),400,placeOf(),detailOf()),()=>sendTurn(turnOf(),60,placeOf(),detailOf()),()=>clearTurn(),()=>setNavigating(false),()=>setGear(true)]);
 
+  // The lane strip under the turn, as on the demo screen: four lanes, the one to be in lit, and when to move.
+  function lanesHtml(turn,meters,limit){
+    const h=C.laneHint(turn,meters,limit);
+    const boxes=[0,1,2,3].map(i=>'<i class="'+((h.side==='left'&&i===0)||(h.side==='right'&&i===3)?'on':'')+'"></i>').join('');
+    return'<div class="coach-lanes" aria-label="추천 차선"><span class="coach-lanes-label">추천 차선</span><div class="coach-lanes-strip">'+boxes+'</div><span>'+esc(h.text)+'</span></div>';
+  }
   function statusOf(t){
     const cur=session.current;
     if(spoken&&t-spoken.at<SPEAK_MS&&!session.question)return{key:spoken.key==='summary'||spoken.key==='briefing'?'note':spoken.key==='memo'?'note':'speak',label:spoken.key==='summary'?'오늘 주행 요약':spoken.key==='briefing'?'출발 전 브리핑':spoken.key==='memo'?'메모':'말하는 중',text:spoken.text};
@@ -125,7 +131,7 @@
     const rate=C.signalRate(p);
     $('coachStage').innerHTML='<div class="ivi"><div class="ivi-top"><span class="ivi-glyph lock"></span><span class="ivi-glyph search"></span><em class="ivi-pill">'+BADGE+'</em><span class="ivi-driver">운</span><span class="ivi-glyph bt"></span><span class="ivi-glyph wifi"></span><time>'+clock+'</time></div>'+
       '<div class="ivi-body"><div class="ivi-cluster"><div class="ivi-cluster-top"><span class="ivi-fuel"><i></i>500 km</span><span class="ivi-speed">'+clusterSpeed+'</span><span class="ivi-prnd">'+prnd+'</span></div><div class="ivi-signals">'+arrow('left')+arrow('right')+'</div>'+car+'<div class="ivi-quick"><i></i><i></i><i></i><i></i></div></div>'+
-      '<div class="ivi-task"><span class="ivi-close"></span><div class="ivi-badge">Pleos SDK 연동 · 방향지시등·기어·속도·위치·내비 이벤트 · PC에서는 가상 차량 콘솔</div><div class="coach-screen ivi-screen"><div class="coach-navi"><div class="coach-navi-head"><span>다음 회전</span><strong>'+esc(cur?C.turnTypes[cur.type].label+(cur.detail?' · '+cur.detail:''):'다음 회전 없음')+'</strong><b>'+(cur&&session.meters>=0?session.meters+'m':'')+'</b></div><dl class="coach-live-body">'+metrics+'</dl></div>'+
+      '<div class="ivi-task"><span class="ivi-close"></span><div class="ivi-badge">Pleos SDK 연동 · 방향지시등·기어·속도·위치·내비 이벤트 · PC에서는 가상 차량 콘솔</div><div class="coach-screen ivi-screen"><div class="coach-navi"><div class="coach-navi-head"><span>다음 회전</span><strong>'+esc(cur?C.turnTypes[cur.type].label+(cur.detail?' · '+cur.detail:''):'다음 회전 없음')+'</strong><b>'+(cur&&session.meters>=0?session.meters+'m':'')+'</b></div>'+lanesHtml(cur,session.meters,limit)+'<dl class="coach-live-body">'+metrics+'</dl></div>'+
       '<aside class="coach-app"><div class="coach-app-brand">운전자학습</div><div class="coach-tag">차량 연동 · '+esc(driver.label)+'</div><div class="coach-chips"><span>'+esc(driver.label)+' 유형</span><span class="on">연결됨 · 가상 콘솔</span></div>'+
       '<div class="coach-status '+esc(status.key)+'"><small>'+esc(status.label)+'</small><p>'+esc(status.text)+'</p>'+answers+'</div>'+
       '<dl class="coach-facts"><div><dt>약한 유형</dt><dd>'+esc(weak.length?weak.join(', '):'없음')+'</dd></div><div><dt>기억 지점</dt><dd>'+p.places.length+'곳 · 확인 대기 '+p.pending.length+'건 · 길 '+Object.keys(p.roadCells).length+'칸</dd></div><div><dt>판단 거리</dt><dd>'+limit+'m <span class="coach-fact-sub">· 깜빡이 '+(rate<0?'기록 중':Math.round(rate*100)+'%')+'</span></dd></div></dl></aside></div></div></div>'+

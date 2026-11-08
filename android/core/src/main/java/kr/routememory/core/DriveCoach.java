@@ -137,6 +137,26 @@ public final class DriveCoach {
         if(!remembered&&turn.type.side!=null&&rarelySignals(p))return new Decision(Action.SILENT,"rarely-signals","",limit);
         return new Decision(Action.SPEAK,c.signal==Signal.OFF?"signal-off":"needs-attention",speechFor(p,turn,c.passenger,c.brief),limit);
     }
+    /** Which side of the road the next turn wants. Korean lanes count from the left: the 1st lane is the leftmost. */
+    public enum LaneSide {LEFT,RIGHT,ANY}
+    public static final class LaneHint {
+        public final LaneSide side; public final String lane,text;
+        LaneHint(LaneSide side,String lane,String text){this.side=side;this.lane=lane;this.text=text;}
+    }
+    /**
+     * For a driver who is not sure which lane to take: the lane for the next turn and whether to move now. Far from the
+     * turn it says to move early; inside the decision distance it says to move now. No turn, no advice.
+     */
+    public static LaneHint laneHint(Turn turn,int meters,int limit) {
+        if(turn==null)return new LaneHint(LaneSide.ANY,"","어느 차선이든 괜찮아요");
+        String when=meters<0?"":meters>limit?" 미리 옮겨 두세요":" 지금 옮기세요";
+        switch(turn.type) {
+            case EXIT_LEFT:case KEEP_LEFT:case TURN_LEFT:return new LaneHint(LaneSide.LEFT,"1차선","1차선(왼쪽 끝)으로"+when);
+            case EXIT_RIGHT:case KEEP_RIGHT:case TURN_RIGHT:return new LaneHint(LaneSide.RIGHT,"맨 오른쪽 차선","맨 오른쪽 차선으로"+when);
+            case ROUNDABOUT:return new LaneHint(LaneSide.RIGHT,"오른쪽 차선","오른쪽 차선에서 천천히 진입"+(meters>=0&&meters<=limit?", 속도 줄이기":""));
+            default:return new LaneHint(LaneSide.ANY,"차선 유지","차선 유지, 속도 줄이기");
+        }
+    }
     /** Works without an active route, for drivers such as route buses. */
     public static Decision decidePoint(Profile p,String placeId) {
         if(!remembers(p,placeId))return new Decision(Action.NONE,"unknown-place","",0);

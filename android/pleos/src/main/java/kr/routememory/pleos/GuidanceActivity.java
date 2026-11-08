@@ -35,7 +35,7 @@ import kr.routememory.core.GuidanceSession.Outcome;
  */
 public class GuidanceActivity extends Activity implements PleosBridge.Host,PleosVoice.Host {
     static final String BADGE="Pleos SDK 연동 · 방향지시등·기어·좌석·속도·위치·내비 이벤트 실제 · 공식 에뮬레이터 또는 실차 필요";
-    private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC;
+    private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_LANE=0xFF5B5F69,SIM_ROUTE=0xFFFF7A26;
     private static final long SPEAK_MS=4400,LONG_MS=9000;
     private static final int REQUEST_SPEED=41;
     private static final String CAR_SPEED_PERMISSION="android.car.permission.CAR_SPEED";
@@ -46,7 +46,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private String spoken="",spokenLabel=""; private long spokenAt,spokenFor;
     private String vehicleState="연결 전",naviState="연결 전",speedSource="-",locationState="-",voiceState="준비 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-",destination="";
     private int meters=-1,speedKph=-1; private Signal signal=Signal.OFF; private boolean restricted,heardIsAnswer;
-    private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts,note;
+    private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts,note,laneText; private LinearLayout lanes;
     private LinearLayout statusBox,typeBar,answers,controls,memoRow; private Button connect,yes,no,memoButton,voiceButton;
 
     @Override protected void onCreate(Bundle saved) {
@@ -102,6 +102,14 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         LinearLayout head=new LinearLayout(this);head.setBackgroundColor(SIM_PANEL);head.setPadding(closeInset,dp(14),dp(18),dp(14));head.setGravity(Gravity.CENTER_VERTICAL);
         headline=text(24,SIM_INK,true);distance=text(24,SIM_INK,true);
         head.addView(headline,new LinearLayout.LayoutParams(0,-2,1));head.addView(distance);navi.addView(head);
+        // The lane strip under the turn: four lanes, the one to be in lit, and a word on when to move.
+        LinearLayout laneRow=new LinearLayout(this);laneRow.setBackgroundColor(SIM_PANEL);laneRow.setPadding(closeInset,0,dp(18),dp(12));laneRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView laneLabel=text(12,SIM_INK2,true);laneLabel.setText("추천 차선");laneLabel.setPadding(0,0,dp(10),0);laneRow.addView(laneLabel);
+        lanes=new LinearLayout(this);
+        for(int i=0;i<4;i++){View v=new View(this);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(22),dp(9));lp.rightMargin=dp(3);v.setBackground(round(SIM_LANE,3));lanes.addView(v,lp);}
+        laneRow.addView(lanes);
+        laneText=text(14,SIM_INK,true);laneText.setPadding(dp(10),0,0,0);laneRow.addView(laneText,new LinearLayout.LayoutParams(0,-2,1));
+        navi.addView(laneRow);
         metrics=text(15,SIM_INK2,false);metrics.setPadding(dp(18),dp(14),dp(18),dp(14));metrics.setLineSpacing(dp(6),1);navi.addView(metrics);
         stage.addView(navi,wide?new LinearLayout.LayoutParams(0,-1,6):new LinearLayout.LayoutParams(-1,0,5));
 
@@ -208,6 +216,9 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private void render() {
         long now=System.currentTimeMillis();Profile profile=session.profile();DriverType type=profile.driverType;
         headline.setText(turnLabel);distance.setText(meters>=0?meters+"m":"");
+        DriveCoach.LaneHint lane=DriveCoach.laneHint(session.currentTurn(),session.meters(),session.currentTurn()==null?0:DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity()));
+        for(int i=0;i<4;i++){boolean on=lane.side==DriveCoach.LaneSide.LEFT&&i==0||lane.side==DriveCoach.LaneSide.RIGHT&&i==3;lanes.getChildAt(i).setBackground(round(on?SIM_ROUTE:SIM_LANE,3));}
+        laneText.setText(lane.text);
         metrics.setText("방향지시등: "+(signal==Signal.LEFT?"왼쪽":signal==Signal.RIGHT?"오른쪽":"꺼짐")+"\n기어: "+gear+"\n속도: "+(speedKph>=0?speedKph+" km/h":"모름")+" · "+speedSource
             +"\n내비 상태: "+naviStatus+(destination.isEmpty()?"":" · 목적지 "+destination)+"\n길 익숙도: "+familiarityLabel(session.familiarity())+" · 위치 "+locationState
             +"\nVehicle SDK: "+vehicleState+(bridge.seatLive()?" · 좌석":"")+"\nNaviHelper SDK: "+naviState+"\nSpeechToText SDK: "+voiceState);

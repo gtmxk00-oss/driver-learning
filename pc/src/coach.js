@@ -94,6 +94,17 @@
     return { action: 'speak', reason: state.signal === 'off' ? 'signal-off' : 'needs-attention',
       speech: speechFor(profile, turn, Boolean(state.passenger), Boolean(state.brief)), limit };
   }
+  // For a driver who is not sure which lane to take: the lane for the next turn and whether to move now. Korean lanes
+  // count from the left (the 1st lane is the leftmost). Far from the turn: move early; inside the decision distance: now.
+  function laneHint(turn, meters, limit) {
+    if (!turn) return { side: 'any', lane: '', text: '어느 차선이든 괜찮아요' };
+    const known = Number.isFinite(meters) && meters >= 0, when = !known ? '' : meters > limit ? ' 미리 옮겨 두세요' : ' 지금 옮기세요';
+    const side = typeOf(turn.type).side;
+    if (side === 'left') return { side: 'left', lane: '1차선', text: '1차선(왼쪽 끝)으로' + when };
+    if (side === 'right') return { side: 'right', lane: '맨 오른쪽 차선', text: '맨 오른쪽 차선으로' + when };
+    if (turn.type === 'roundabout') return { side: 'right', lane: '오른쪽 차선', text: '오른쪽 차선에서 천천히 진입' + (known && meters <= limit ? ', 속도 줄이기' : '') };
+    return { side: 'any', lane: '차선 유지', text: '차선 유지, 속도 줄이기' };
+  }
   // Works without an active route, for drivers such as route buses.
   function decidePoint(profile, placeId) {
     if (!remembers(profile, placeId)) return { action: 'none', reason: 'unknown-place', speech: '' };
@@ -213,5 +224,5 @@
     createProfile, misses, chooseWeak, isWeak, remembers, decisionMeters, signalRate, rarelySignals,
     decide, decidePoint, addMemo, labelPlace, placeLabel, rememberFor, placesFor, noteMiss, canReview, review, notePass, lowerType,
     cellKey, noteRoad, familiarity, summarySpeech,
-    briefing, briefingFor, clearMemory, snapshot, restore });
+    briefing, briefingFor, laneHint, clearMemory, snapshot, restore });
 });

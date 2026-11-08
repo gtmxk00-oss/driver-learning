@@ -120,6 +120,12 @@ public final class DriveCoachTest {
         check(at("family",4.5).action==Action.NONE&&at("family",4.5).spoken.isEmpty(),"the child hears nothing of the parent's memory");
         check(at("erase",1).step.text.contains("5곳")&&at("erase",3).places==0,"erase forgets the parent");
         check(at("taxi",0.1).places==1,"erase leaves other profiles");
+        // Lane advice for the next turn, from the turn side; the wording says whether to move now.
+        check(DriveCoach.laneHint(left("l"),900,300).side==DriveCoach.LaneSide.LEFT&&DriveCoach.laneHint(left("l"),900,300).text.equals("1차선(왼쪽 끝)으로 미리 옮겨 두세요"),"left turn far away: move early");
+        check(DriveCoach.laneHint(left("l"),200,300).text.equals("1차선(왼쪽 끝)으로 지금 옮기세요"),"left turn near: move now");
+        check(DriveCoach.laneHint(new Turn("r",TurnType.EXIT_RIGHT),-1,300).text.equals("맨 오른쪽 차선으로"),"unknown distance: no timing");
+        check(DriveCoach.laneHint(new Turn("o",TurnType.ROUNDABOUT),250,300).side==DriveCoach.LaneSide.RIGHT&&DriveCoach.laneHint(new Turn("o",TurnType.ROUNDABOUT),250,300).text.contains("속도 줄이기"),"roundabout: right lane, slow down");
+        check(DriveCoach.laneHint(null,100,300).side==DriveCoach.LaneSide.ANY,"no turn, no advice");
         System.out.println("PASS: "+checks+" drive coach checks");
     }
 }

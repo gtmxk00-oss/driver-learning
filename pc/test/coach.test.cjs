@@ -262,3 +262,11 @@ test('narration never starts before its scene and fits custom durations', () => 
   assert.equal(line.items[1].start, 20);
   for (const item of line.items) assert.ok(D.narrationSeconds(item.scene) < item.end - item.start);
 });
+test('lane advice follows the side of the next turn and says whether to move now', () => {
+  assert.deepEqual(C.laneHint({ id: 'l', type: 'exit-left' }, 900, 300), { side: 'left', lane: '1차선', text: '1차선(왼쪽 끝)으로 미리 옮겨 두세요' });
+  assert.equal(C.laneHint({ id: 'l', type: 'turn-left' }, 200, 300).text, '1차선(왼쪽 끝)으로 지금 옮기세요');
+  assert.equal(C.laneHint({ id: 'r', type: 'exit-right' }, -1, 300).text, '맨 오른쪽 차선으로');
+  assert.equal(C.laneHint({ id: 'o', type: 'roundabout' }, 250, 300).side, 'right');
+  assert.match(C.laneHint({ id: 'o', type: 'roundabout' }, 250, 300).text, /속도 줄이기/);
+  assert.equal(C.laneHint(null, 100, 300).side, 'any');
+});

@@ -138,3 +138,14 @@
 .ivi-screen .coach-navi-head strong,.ivi-screen .coach-navi-head b{font-size:3.2cqw}
 .ivi-screen .coach-live-body{gap:.6cqw;padding:1.2cqw 2.4cqw}
 .ivi-screen .coach-live-body div{font-size:1.45cqw;padding-bottom:.45cqw}
+
+/* Lane advice under the next turn: four lanes drawn, the one to be in lit, and a word on when to move. */
+.coach-lanes{display:flex;align-items:center;gap:1.2cqw;padding:.9cqw 3.2cqw;background:var(--sim-panel);border-top:1px solid var(--sim-edge);color:var(--sim-ink);font-size:1.6cqw;font-weight:700}
+.coach-lanes-label{font-size:1.3cqw;font-weight:600;color:var(--sim-ink-2)}
+.coach-lanes-strip{display:flex;gap:.4cqw;width:16cqw}
+.coach-lanes-strip i{flex:1;height:1.4cqw;border-radius:.3cqw;background:var(--sim-edge)}
+.coach-lanes-strip i.on{background:var(--sim-route)}
+.ivi-screen .coach-lanes{padding:.6cqw 2.4cqw;font-size:1.3cqw}
+.ivi-screen .coach-lanes-label{font-size:1.1cqw}
+.ivi-screen .coach-lanes-strip{width:12cqw}
+.ivi-screen .coach-lanes-strip i{height:1.1cqw}

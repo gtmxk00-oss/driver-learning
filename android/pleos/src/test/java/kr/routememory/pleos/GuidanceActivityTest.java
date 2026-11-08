@@ -58,6 +58,7 @@ public class GuidanceActivityTest {
         settle();
         assertTrue(shown(activity,"왼쪽 출구 · 강변북로 진출"));
         assertTrue(shown(activity,"100m"));
+        assertTrue(shown(activity,"1차선(왼쪽 끝)으로 지금 옮기세요"));
         bridge.onReRouteEnded();
         bridge.onSelected(VehicleGear.GEAR_PARK);
         settle();
