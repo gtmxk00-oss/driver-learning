@@ -132,3 +132,9 @@
 .coach-console button.listening{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text);animation:ivi-blink 1s steps(1) infinite}
 .ivi-speed{font-variant-numeric:tabular-nums}
 .coach-facts .coach-fact-sub{opacity:.7}
+/* Inside the mock car screen the navigation panel has six rows now; they are set tighter so nothing runs under the dock. */
+.ivi-screen .coach-navi{overflow:hidden}
+.ivi-screen .coach-navi-head{padding:1.6cqw 2.4cqw 1cqw}
+.ivi-screen .coach-navi-head strong,.ivi-screen .coach-navi-head b{font-size:3.2cqw}
+.ivi-screen .coach-live-body{gap:.6cqw;padding:1.2cqw 2.4cqw}
+.ivi-screen .coach-live-body div{font-size:1.45cqw;padding-bottom:.45cqw}
