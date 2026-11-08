@@ -140,7 +140,6 @@ public final class GuidanceSession {
         if(placeId==null||words.isEmpty())return none();
         DriveCoach.addMemo(profile,placeId);DriveCoach.labelPlace(profile,placeId,words);
         DriveCoach.rememberFor(profile,destination,placeId);
-        if(words.contains("합류")&&destination!=null)DriveCoach.noteHardMerge(profile,destination);
         return new Outcome(Event.MEMO,"기억해 둘게요. "+words,null);
     }
 

@@ -3,7 +3,6 @@ package kr.routememory.pleos;
 import ai.pleos.playground.navi.constants.CautionPointType;
 import ai.pleos.playground.navi.constants.NaviErrorCode;
 import ai.pleos.playground.navi.constants.NavigationStatus;
-import ai.pleos.playground.navi.constants.RouteOption;
 import ai.pleos.playground.navi.data.CautionPoint;
 import ai.pleos.playground.navi.data.DestinationArrivedInfo;
 import ai.pleos.playground.navi.data.DestinationInfo;
@@ -108,11 +107,6 @@ public final class PleosBridge implements NaviHelperEventListener {
         try{if(carSpeed!=null)carSpeed.stop();}catch(RuntimeException|LinkageError ignored){}location.stop();carSpeedLive=false;seatLive=false;
         vehicle=null;navi=null;vehicleState="연결 해제";naviState="연결 해제";
         host.onLink(vehicleState,naviState);host.onSources("-","-");
-    }
-    /** The driver accepted the comfort route: the navigation is asked for its comfortable option. */
-    public boolean requestComfortRoute() {
-        if(navi==null)return false;
-        try{navi.changeRouteOption(RouteOption.COMFORTABLE);return true;}catch(Throwable e){android.util.Log.d(TAG,"route option "+brief(e));return false;}
     }
     private static String brief(Throwable e){String m=e.getMessage();return e.getClass().getSimpleName()+(m==null||m.isEmpty()?"":" "+m.substring(0,Math.min(60,m.length())));}
     private void post(Runnable r){if(Looper.myLooper()==Looper.getMainLooper())r.run();else main.post(r);}

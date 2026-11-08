@@ -82,7 +82,6 @@ public final class DriveCoach {
         final Set<TurnType> chosenWeak=EnumSet.noneOf(TurnType.class);
         final Set<String> places=new HashSet<>();
         final ArrayDeque<Turn> pending=new ArrayDeque<>();
-        final Set<String> comfortAsks=new HashSet<>(),comfortRoutes=new HashSet<>();
         public int habitMeters,habitSamples;
         /** Turns passed, and how many of them the driver signalled for: the driver's own signalling rate. */
         public int signalTurns,signalOnTurns;
@@ -260,16 +259,9 @@ public final class DriveCoach {
     }
     /** The briefing for a destination the navigation just received, from what was learned on earlier trips there. */
     public static Briefing briefingFor(Profile p,String destination,boolean parked,boolean passenger){return briefing(p,placesFor(p,destination),parked,passenger);}
-    public static void noteHardMerge(Profile p,String destination){p.comfortAsks.add(destination);}
-    public static boolean usesComfortRoute(Profile p,String destination){return p.comfortRoutes.contains(destination);}
-    public static String comfortOffer(Profile p,String destination,boolean parked,boolean passenger) {
-        if(!parked||passenger||!p.comfortAsks.contains(destination)||usesComfortRoute(p,destination))return "";
-        return "지난번 어려웠던 합류를 피하는 편한 길로 바꿀까요?";
-    }
-    public static void acceptComfort(Profile p,String destination){p.comfortRoutes.add(destination);}
     /** Erases what this profile learned. Other profiles keep theirs. */
     public static void clearMemory(Profile p) {
-        p.typeMisses.clear();p.passStreak.clear();p.chosenWeak.clear();p.places.clear();p.pending.clear();p.comfortAsks.clear();p.comfortRoutes.clear();
+        p.typeMisses.clear();p.passStreak.clear();p.chosenWeak.clear();p.places.clear();p.pending.clear();
         p.destPlaces.clear();p.placeLabels.clear();p.roadCells.clear();
         p.habitMeters=0;p.habitSamples=0;p.signalTurns=0;p.signalOnTurns=0;
     }

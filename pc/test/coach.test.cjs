@@ -175,26 +175,12 @@ test('the briefing reads at most three remembered points on this route, parked a
   assert.equal(C.briefing(profile, route, { parked: true, passenger: true }).speech, '');
   assert.equal(C.briefing(C.createProfile('b', 'B'), route, { parked: true, passenger: false }).speech, '');
 });
-test('the comfort route is offered once, parked and alone, and changes only after approval', () => {
-  const profile = C.createProfile('a', 'A'), alone = { parked: true, passenger: false };
-  assert.equal(C.comfortOffer(profile, 'hospital', alone), '');
-  C.noteHardMerge(profile, 'hospital');
-  assert.equal(C.comfortOffer(profile, 'other', alone), '');
-  assert.equal(C.comfortOffer(profile, 'hospital', { parked: false, passenger: false }), '');
-  assert.equal(C.comfortOffer(profile, 'hospital', { parked: true, passenger: true }), '');
-  assert.ok(C.comfortOffer(profile, 'hospital', alone));
-  assert.equal(C.usesComfortRoute(profile, 'hospital'), false);
-  C.acceptComfort(profile, 'hospital');
-  assert.equal(C.usesComfortRoute(profile, 'hospital'), true);
-  assert.equal(C.comfortOffer(profile, 'hospital', alone), '');
-});
 test('clearing a profile forgets it and leaves other profiles alone', () => {
   const a = C.createProfile('a', 'A'), b = C.createProfile('b', 'B'), turn = { id: 'e', type: 'exit-left' };
-  for (const profile of [a, b]) { C.noteMiss(profile, turn); C.review(profile, true); C.chooseWeak(profile, 'roundabout'); C.noteHardMerge(profile, 'x'); }
+  for (const profile of [a, b]) { C.noteMiss(profile, turn); C.review(profile, true); C.chooseWeak(profile, 'roundabout'); }
   C.clearMemory(a);
   assert.equal(C.remembers(a, 'e'), false);
   assert.equal(C.isWeak(a, 'roundabout'), false);
-  assert.equal(C.comfortOffer(a, 'x', { parked: true }), '');
   assert.equal(C.remembers(b, 'e'), true);
   assert.equal(C.isWeak(b, 'roundabout'), true);
 });
@@ -205,7 +191,6 @@ test('the demo tells only what the rules decide', () => {
     '왼쪽 출구가 곧 나옵니다. 미리 준비하세요.',
     '왼쪽 출구 알림을 줄여도 될까요?',
     '이번 길에 기억해 둔 곳이 3곳 있습니다. 강변 합류, 다리 앞 분기, 시장 앞 출구입니다.',
-    '지난번 어려웠던 합류를 피하는 편한 길로 바꿀까요?',
     '왼쪽 출구 준비하세요.', '아까 그 출구, 놓치셨나요?',
     '오른쪽 출구가 곧 나옵니다. 미리 준비하세요.',
     '좁은 길이 곧 나옵니다. 미리 준비하세요.',
@@ -256,8 +241,8 @@ test('the briefing scene speaks three of the four points on the route', () => {
   assert.match(step.text, /3곳/);
   assert.ok(D.events().some(event => event.kind === 'alert' && event.text === step.text));
 });
-test('the parent memo offers the comfort route and the child hears nothing there', () => {
-  assert.match(sceneAt('comfort-offer', 3).step.text, /편한 길/);
+test("the parent's memo is kept and the child hears nothing there", () => {
+  assert.ok(sceneAt('family', 0.1).places > sceneAt('memo', 0.1).places);
   const child = sceneAt('family', 4.5);
   assert.equal(child.decision.action, 'none');
   assert.equal(child.spoken, '');

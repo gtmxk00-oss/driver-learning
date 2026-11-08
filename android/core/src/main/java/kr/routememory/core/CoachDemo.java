@@ -25,7 +25,7 @@ public final class CoachDemo {
     public enum Phase {CARD,DRIVING,PASSED,REROUTING,QUESTION_WAITING,QUESTION,LEARNED,DECLINED,MEMO,MEMO_SAVED,PARKED}
 
     public static final class Scene {
-        public String id,tag,title,lead,narration,question,memo,memoText,point,who,comfort;
+        public String id,tag,title,lead,narration,question,memo,memoText,point,who;
         public DriverType driver; public Turn turn; public Outcome outcome=Outcome.NONE;
         public int from,signalAt,pointMeters; public double driveSeconds,seconds,narrateAt;
         public boolean passenger,noRoute,card,parked; public Signal signalSide=Signal.OFF;
@@ -70,9 +70,8 @@ public final class CoachDemo {
         Scene lower=parked("lower","일반 · 알림 줄이기",null,8,19,"같은 유형을 연속 세 번 무사히 지나면 정차 중에 알림을 줄여도 될지 묻습니다. 운전자가 승인해야 약한 유형에서 내립니다.");
         lower.turn=new Turn("exit-e",TurnType.EXIT_LEFT);list.add(lower);
         list.add(parked("briefing","가족 · 출발 전 브리핑","parent",12,21,"정차 상태에서 목적지가 정해지면, 그 길에서 기억해 둔 지점을 최대 세 곳까지 미리 읽어 줍니다."));
-        Scene merge=new Scene();merge.id="comfort-memo";merge.tag="가족 · 합류 메모";merge.driver=DriverType.GENERAL;merge.who="parent";merge.turn=new Turn("merge-1",TurnType.KEEP_RIGHT);merge.memo="merge-1";merge.memoText="여기 합류가 어려워";merge.comfort="hospital";merge.seconds=10;
-        merge.narration="합류가 어려웠던 곳에서 음성으로 메모를 남깁니다.";list.add(merge);
-        list.add(parked("comfort-offer","가족 · 편한 길 제안","parent",9,20,"다음에 같은 목적지로 출발할 때 편한 길로 바꿀지 묻습니다. 운전자가 승인해야 내비게이션의 경로 옵션을 바꿉니다."));
+        Scene merge=new Scene();merge.id="memo";merge.tag="가족 · 음성 메모";merge.driver=DriverType.GENERAL;merge.who="parent";merge.turn=new Turn("merge-1",TurnType.KEEP_RIGHT);merge.memo="merge-1";merge.memoText="여기 차선이 헷갈려";merge.seconds=10;
+        merge.narration="헷갈린 곳에서 음성으로 메모를 남기면 그 자리가 기억에 들어갑니다.";list.add(merge);
         Scene child=drive("family","가족 · 자녀 프로필",DriverType.GENERAL,"merge-1",TurnType.KEEP_RIGHT,800,5,Outcome.NONE,13,"같은 차를 자녀가 운전하면, 부모의 프로필에 쌓인 기억은 울리지 않습니다.");
         child.who="child";list.add(child);
         list.add(parked("erase","가족 · 기억 삭제","parent",5,15,"기억은 프로필별로 지울 수 있습니다. 기록은 운전자의 것이며, 직업 운전자의 기록도 회사에 제공하지 않습니다."));
@@ -119,10 +118,6 @@ public final class CoachDemo {
                 return Arrays.asList(new Step(0,"기록","왼쪽 출구를 연속 3회 무사히 통과했습니다",false,false),new Step(2.6,"정차 중 질문","왼쪽 출구 알림을 줄여도 될까요?",true,false),new Step(6.4,"기록","운전자가 승인해 약한 유형에서 내렸습니다",false,true));
             case "briefing":
                 return Arrays.asList(new Step(0,"출발 전","목적지 병원 · 정차 중",false,false),new Step(2,"출발 전 브리핑",DriveCoach.briefing(p,ROUTE_TO_HOSPITAL,true,false).speech,true,false));
-            case "comfort-offer":
-                String ask=DriveCoach.comfortOffer(p,"hospital",true,false);
-                DriveCoach.acceptComfort(p,"hospital");
-                return Arrays.asList(new Step(0,"출발 전","목적지 병원 · 정차 중",false,false),new Step(1.8,"정차 중 질문",ask,true,false),new Step(7.2,"기록","운전자가 승인해 내비게이션 경로 옵션을 바꿉니다",false,true));
             case "erase":
                 int count=p.placeCount();
                 DriveCoach.clearMemory(p);
@@ -152,7 +147,6 @@ public final class CoachDemo {
     private static void finish(Scene s,Profile p) {
         if(s.parked){runParked(s,p);return;}
         if(s.memo!=null)DriveCoach.addMemo(p,s.memo);
-        if(s.comfort!=null)DriveCoach.noteHardMerge(p,s.comfort);
         if(s.outcome==Outcome.PASS)DriveCoach.notePass(p,s.turn,s.signalAt);
         if(s.outcome==Outcome.MISS||s.outcome==Outcome.DECLINE){DriveCoach.noteMiss(p,s.turn);DriveCoach.review(p,s.outcome==Outcome.MISS);}
     }

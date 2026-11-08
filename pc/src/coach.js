@@ -47,7 +47,7 @@
   function createProfile(id, name, driverType = 'general') {
     if (!owns(driverTypes, driverType)) throw new TypeError('Unknown driver type');
     return { id: String(id), name: String(name), driverType, typeMisses: {}, passStreak: {},
-      chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [], comfortAsks: [], comfortRoutes: [],
+      chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
       signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {} };
   }
   function misses(profile, type) { return profile.typeMisses[type] || 0; }
@@ -184,16 +184,9 @@
   }
   // The briefing for a destination the navigation just received, from what was learned on earlier trips there.
   function briefingFor(profile, destination, state) { return briefing(profile, placesFor(profile, destination), state); }
-  function noteHardMerge(profile, destination) { if (!profile.comfortAsks.includes(destination)) profile.comfortAsks.push(destination); }
-  function usesComfortRoute(profile, destination) { return profile.comfortRoutes.includes(destination); }
-  function comfortOffer(profile, destination, state) {
-    if (!privateMoment(state) || !profile.comfortAsks.includes(destination) || usesComfortRoute(profile, destination)) return '';
-    return '지난번 어려웠던 합류를 피하는 편한 길로 바꿀까요?';
-  }
-  function acceptComfort(profile, destination) { if (!usesComfortRoute(profile, destination)) profile.comfortRoutes.push(destination); }
   // Erases what this profile learned. Other profiles keep theirs.
   function clearMemory(profile) {
-    Object.assign(profile, { typeMisses: {}, passStreak: {}, chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [], comfortAsks: [], comfortRoutes: [],
+    Object.assign(profile, { typeMisses: {}, passStreak: {}, chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
       signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {} });
   }
   // What a profile learned, as JSON, so it can be kept in the browser. Garbage is skipped rather than trusted.
@@ -220,5 +213,5 @@
     createProfile, misses, chooseWeak, isWeak, remembers, decisionMeters, signalRate, rarelySignals,
     decide, decidePoint, addMemo, labelPlace, placeLabel, rememberFor, placesFor, noteMiss, canReview, review, notePass, lowerType,
     cellKey, noteRoad, familiarity, summarySpeech,
-    briefing, briefingFor, noteHardMerge, comfortOffer, acceptComfort, usesComfortRoute, clearMemory, snapshot, restore });
+    briefing, briefingFor, clearMemory, snapshot, restore });
 });

@@ -148,7 +148,6 @@
     if (!placeId || !words) return none();
     C.addMemo(s.profile, placeId); C.labelPlace(s.profile, placeId, words);
     C.rememberFor(s.profile, s.destination, placeId);
-    if (words.includes('합류') && s.destination) C.noteHardMerge(s.profile, s.destination);
     return { event: 'memo', speech: '기억해 둘게요. ' + words, decision: null };
   }
   return Object.freeze({ MISS_WINDOW_MS, MISS_NEAR_METERS, QUESTION, create, onTurn, onCaution, onSignal, onSpeed, onLocation, setFamiliarity,

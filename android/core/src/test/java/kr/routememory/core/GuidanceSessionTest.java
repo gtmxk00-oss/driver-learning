@@ -219,7 +219,6 @@ public final class GuidanceSessionTest {
         Outcome memo=s.memo("여기 합류가 어려워",100);
         check(memo.event==Event.MEMO&&memo.speech.equals("기억해 둘게요. 여기 합류가 어려워"),"memo acknowledged: "+memo.speech);
         check(DriveCoach.remembers(s.profile(),"m1")&&DriveCoach.placeLabel(s.profile(),"m1").equals("여기 합류가 어려워"),"the turn is remembered with the words");
-        check(!DriveCoach.comfortOffer(s.profile(),"물류센터",true,false).isEmpty(),"a merge memo opens the comfort offer for that destination");
         check(s.memo("   ",200).event==Event.NONE,"empty words are not a memo");
 
         // Everything new survives the snapshot too.

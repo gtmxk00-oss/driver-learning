@@ -47,7 +47,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private String vehicleState="연결 전",naviState="연결 전",speedSource="-",locationState="-",voiceState="준비 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-",destination="";
     private int meters=-1,speedKph=-1; private Signal signal=Signal.OFF; private boolean restricted,heardIsAnswer;
     private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts,note;
-    private LinearLayout statusBox,typeBar,answers,controls,memoRow; private Button connect,yes,no,memoButton,voiceButton,comfortButton;
+    private LinearLayout statusBox,typeBar,answers,controls,memoRow; private Button connect,yes,no,memoButton,voiceButton;
 
     @Override protected void onCreate(Bundle saved) {
         boolean night=(getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
@@ -129,7 +129,6 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         memoRow=new LinearLayout(this);memoRow.setPadding(dp(16),0,dp(16),dp(4));
         memoButton=button("여기 헷갈려",false,()->memo("여기 헷갈려"));memoRow.addView(memoButton,new LinearLayout.LayoutParams(0,-2,1));
         voiceButton=button("말로 하기",false,this::listen);memoRow.addView(voiceButton,grow(dp(8)));
-        comfortButton=button("편한 길로 바꾸기",false,this::acceptComfort);memoRow.addView(comfortButton,grow(dp(8)));
         root.addView(memoRow);
         typeBar=new LinearLayout(this);typeBar.setPadding(dp(16),dp(4),dp(16),dp(10));
         for(DriverType type:DriverType.values()) {
@@ -173,14 +172,6 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
             if(words.matches("^(아니|아뇨|괜찮|그냥).*")){answer(false);return;}
         }
         memo(words);
-    }
-    private void acceptComfort() {
-        String dest=session.destination();
-        if(dest==null)return;
-        DriveCoach.acceptComfort(session.profile(),dest);
-        boolean asked=bridge.requestComfortRoute();
-        show("편한 길",asked?"내비에 편안한 경로 옵션을 요청했어요":"내비가 연결돼 있지 않아 요청하지 못했어요",SPEAK_MS);
-        save();render();
     }
     private void show(String label,String text,long forMs){spokenLabel=label;spoken=text;spokenAt=System.currentTimeMillis();spokenFor=forMs;}
     private void speak(String text){if(ttsReady&&tts!=null)tts.speak(text,TextToSpeech.QUEUE_ADD,null,"guidance");}
@@ -227,8 +218,6 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
             +"\n판단 거리: "+DriveCoach.decisionMeters(profile,session.currentTurn()==null?new DriveCoach.Turn("-",DriveCoach.TurnType.EXIT_LEFT):session.currentTurn(),session.speedKph(),session.familiarity())+"m · 깜빡이 "+(rate<0?"기록 중":Math.round(rate*100)+"%"));
         connect.setText(bridge.connected()?"연결 해제":"연결");
         voiceButton.setText(voice.listening()?"듣는 중… (누르면 취소)":"말로 하기");
-        String dest=session.destination();
-        comfortButton.setVisibility(dest!=null&&!DriveCoach.comfortOffer(profile,dest,session.parked(),session.passenger()).isEmpty()?View.VISIBLE:View.GONE);
         for(int i=0;i<typeBar.getChildCount();i++)typeBar.getChildAt(i).setBackground(round(DriveCoach.DriverType.values()[i]==type?p.accentSoft:p.surface2,10));
         // While the car asks for a simplified screen, only the status and its question stay.
         int hidden=restricted?View.GONE:View.VISIBLE;

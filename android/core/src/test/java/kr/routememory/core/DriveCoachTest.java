@@ -87,7 +87,7 @@ public final class DriveCoachTest {
         List<String> alerts=new ArrayList<>();
         for(CoachDemo.Event event:CoachDemo.events())if(event.alert)alerts.add(event.text);
         check(alerts.equals(Arrays.asList("아까 그 출구, 놓치셨나요?","아까 그 출구, 놓치셨나요?","아까 그 출구, 놓치셨나요?","왼쪽 출구가 곧 나옵니다. 미리 준비하세요.",
-            "왼쪽 출구 알림을 줄여도 될까요?","이번 길에 기억해 둔 곳이 3곳 있습니다. 강변 합류, 다리 앞 분기, 시장 앞 출구입니다.","지난번 어려웠던 합류를 피하는 편한 길로 바꿀까요?",
+            "왼쪽 출구 알림을 줄여도 될까요?","이번 길에 기억해 둔 곳이 3곳 있습니다. 강변 합류, 다리 앞 분기, 시장 앞 출구입니다.",
             "왼쪽 출구 준비하세요.","아까 그 출구, 놓치셨나요?","오른쪽 출구가 곧 나옵니다. 미리 준비하세요.","좁은 길이 곧 나옵니다. 미리 준비하세요.",
             "헷갈렸던 지점입니다. 미리 확인하세요.")),"demo speech matches PC: "+alerts);
         check(at("silent",4).action==Action.SILENT,"signal scene is silent");
@@ -106,30 +106,17 @@ public final class DriveCoachTest {
         check(DriveCoach.briefing(briefed,route,true,true).speech.isEmpty(),"no briefing in front of a passenger");
         check(DriveCoach.briefing(profile(DriverType.GENERAL),route,true,false).speech.isEmpty(),"nothing to brief without memories");
 
-        Profile comfort=profile(DriverType.GENERAL);
-        check(DriveCoach.comfortOffer(comfort,"hospital",true,false).isEmpty(),"no offer without a memo");
-        DriveCoach.noteHardMerge(comfort,"hospital");
-        check(DriveCoach.comfortOffer(comfort,"other",true,false).isEmpty(),"offer is per destination");
-        check(DriveCoach.comfortOffer(comfort,"hospital",false,false).isEmpty(),"no offer while moving");
-        check(DriveCoach.comfortOffer(comfort,"hospital",true,true).isEmpty(),"no offer in front of a passenger");
-        check(!DriveCoach.comfortOffer(comfort,"hospital",true,false).isEmpty(),"offer when parked and alone");
-        check(!DriveCoach.usesComfortRoute(comfort,"hospital"),"route waits for approval");
-        DriveCoach.acceptComfort(comfort,"hospital");
-        check(DriveCoach.usesComfortRoute(comfort,"hospital"),"approval changes the route option");
-        check(DriveCoach.comfortOffer(comfort,"hospital",true,false).isEmpty(),"offer is not repeated");
-
         Profile erased=profile(DriverType.GENERAL),kept=profile(DriverType.GENERAL);
-        for(Profile each:Arrays.asList(erased,kept)){confirm(each,left("e"));DriveCoach.chooseWeak(each,TurnType.ROUNDABOUT);DriveCoach.noteHardMerge(each,"x");}
+        for(Profile each:Arrays.asList(erased,kept)){confirm(each,left("e"));DriveCoach.chooseWeak(each,TurnType.ROUNDABOUT);}
         DriveCoach.clearMemory(erased);
         check(!DriveCoach.remembers(erased,"e")&&!DriveCoach.isWeak(erased,TurnType.ROUNDABOUT),"clearing forgets the profile");
-        check(DriveCoach.comfortOffer(erased,"x",true,false).isEmpty(),"clearing forgets comfort memos");
         check(DriveCoach.remembers(kept,"e")&&DriveCoach.isWeak(kept,TurnType.ROUNDABOUT),"other profiles keep their memory");
 
         check(at("setup",1).weak.isEmpty()&&at("setup",3).weak.contains("회전교차로"),"a chosen weak type shows at once");
         check(at("decline",14).phase==CoachDemo.Phase.DECLINED&&at("decline",14).places==at("decline",0.1).places,"answering no records nothing");
         check(at("lower",3).weak.contains("왼쪽 출구")&&at("lower",7).weak.isEmpty(),"lowering waits for approval");
         check(at("briefing",3).step.speak&&at("briefing",3).step.text.contains("3곳"),"briefing speaks three points");
-        check(at("comfort-offer",3).step.text.contains("편한 길"),"memo leads to the comfort offer");
+        check(at("memo",8).places>at("memo",0.1).places,"the memo adds a place");
         check(at("family",4.5).action==Action.NONE&&at("family",4.5).spoken.isEmpty(),"the child hears nothing of the parent's memory");
         check(at("erase",1).step.text.contains("5곳")&&at("erase",3).places==0,"erase forgets the parent");
         check(at("taxi",0.1).places==1,"erase leaves other profiles");

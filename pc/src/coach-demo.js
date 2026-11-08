@@ -32,10 +32,8 @@
       narration: '같은 유형을 연속 세 번 무사히 지나면 정차 중에 알림을 줄여도 될지 묻습니다. 운전자가 승인해야 약한 유형에서 내립니다.' },
     { id: 'briefing', tag: '가족 · 출발 전 브리핑', driver: 'general', who: 'parent', route: ROUTE_TO_HOSPITAL, parked: true, noRoute: true, narrateAt: 12, seconds: 21,
       narration: '정차 상태에서 목적지가 정해지면, 그 길에서 기억해 둔 지점을 최대 세 곳까지 미리 읽어 줍니다.' },
-    { id: 'comfort-memo', tag: '가족 · 합류 메모', driver: 'general', who: 'parent', turn: { id: 'merge-1', type: 'keep-right' }, memo: 'merge-1', memoText: '여기 합류가 어려워', comfort: 'hospital', seconds: 10,
-      narration: '합류가 어려웠던 곳에서 음성으로 메모를 남깁니다.' },
-    { id: 'comfort-offer', tag: '가족 · 편한 길 제안', driver: 'general', who: 'parent', parked: true, noRoute: true, narrateAt: 9, seconds: 20,
-      narration: '다음에 같은 목적지로 출발할 때 편한 길로 바꿀지 묻습니다. 운전자가 승인해야 내비게이션의 경로 옵션을 바꿉니다.' },
+    { id: 'memo', tag: '가족 · 음성 메모', driver: 'general', who: 'parent', turn: { id: 'merge-1', type: 'keep-right' }, memo: 'merge-1', memoText: '여기 차선이 헷갈려', seconds: 10,
+      narration: '헷갈린 곳에서 음성으로 메모를 남기면 그 자리가 기억에 들어갑니다.' },
     { id: 'family', tag: '가족 · 자녀 프로필', driver: 'general', who: 'child', turn: { id: 'merge-1', type: 'keep-right' }, from: 800, driveSeconds: 5, seconds: 13,
       narration: '같은 차를 자녀가 운전하면, 부모의 프로필에 쌓인 기억은 울리지 않습니다.' },
     { id: 'erase', tag: '가족 · 기억 삭제', driver: 'general', who: 'parent', parked: true, noRoute: true, narrateAt: 5, seconds: 15,
@@ -84,11 +82,6 @@
       return [{ at: 0, label: '기록', text: '왼쪽 출구를 연속 3회 무사히 통과했습니다' }, { at: 2.6, label: '정차 중 질문', text: '왼쪽 출구 알림을 줄여도 될까요?', speak: true }, { at: 6.4, label: '기록', text: '운전자가 승인해 약한 유형에서 내렸습니다', applies: true }];
     }
     if (scene.id === 'briefing') return [{ at: 0, label: '출발 전', text: '목적지 병원 · 정차 중' }, { at: 2, label: '출발 전 브리핑', text: C.briefing(profile, scene.route, alone).speech, speak: true }];
-    if (scene.id === 'comfort-offer') {
-      const ask = C.comfortOffer(profile, 'hospital', alone);
-      C.acceptComfort(profile, 'hospital');
-      return [{ at: 0, label: '출발 전', text: '목적지 병원 · 정차 중' }, { at: 1.8, label: '정차 중 질문', text: ask, speak: true }, { at: 7.2, label: '기록', text: '운전자가 승인해 내비게이션 경로 옵션을 바꿉니다', applies: true }];
-    }
     if (scene.id === 'erase') {
       const count = profile.places.length;
       C.clearMemory(profile);
@@ -121,7 +114,6 @@
   function finishScene(scene, profile) {
     if (scene.parked) { runParked(scene, profile); return; }
     if (scene.memo) C.addMemo(profile, scene.memo);
-    if (scene.comfort) C.noteHardMerge(profile, scene.comfort);
     if (scene.outcome === 'pass') C.notePass(profile, scene.turn, scene.signalAt);
     if (scene.outcome === 'miss' || scene.outcome === 'decline') { C.noteMiss(profile, scene.turn); C.review(profile, scene.outcome === 'miss'); }
   }

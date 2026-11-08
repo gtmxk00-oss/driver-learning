@@ -131,7 +131,6 @@ test("a memo by voice or button remembers the current turn with the driver's own
   assert.equal(memo.event, 'memo'); assert.equal(memo.speech, '기억해 둘게요. 여기 합류가 어려워');
   assert.equal(C.remembers(s.profile, 'm1'), true);
   assert.equal(C.placeLabel(s.profile, 'm1'), '여기 합류가 어려워');
-  assert.notEqual(C.comfortOffer(s.profile, '물류센터', { parked: true }), '');
   assert.equal(G.memo(s, '   ').event, 'none');
 });
 test('everything new survives the snapshot too, and garbage is skipped', () => {
