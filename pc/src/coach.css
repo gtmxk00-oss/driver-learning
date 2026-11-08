@@ -62,3 +62,16 @@
 .coach-live-type{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
 .coach-live-type select{min-height:44px;padding:6px 10px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit}
 .coach-controls button:disabled{opacity:.55;cursor:not-allowed}
+/* Virtual vehicle console under the car-link screen, and the parked question's answers inside the app card. */
+.coach-console{display:grid;gap:8px;margin-top:12px}
+.coach-console .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.coach-console .row b{min-width:68px;font-size:13px;font-weight:700;color:var(--ink-2)}
+.coach-console button{min-height:40px;padding:6px 12px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit;font-weight:600;cursor:pointer}
+.coach-console button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.coach-console button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}
+.coach-console button:disabled{opacity:.5;cursor:default}
+.coach-console input,.coach-console select{min-height:40px;padding:6px 10px;border:1px solid var(--rm-line);border-radius:var(--rm-control-radius);background:var(--surface);color:var(--ink);font:inherit}
+.coach-console input[type=checkbox]{min-height:0;width:18px;height:18px;accent-color:var(--accent)}
+.coach-answers{display:flex;gap:.8cqw;margin-top:1.2cqw}
+.coach-answers button{flex:1;min-height:3.8cqw;border:0;border-radius:1cqw;background:var(--surface);color:var(--ink);font:inherit;font-size:1.9cqw;font-weight:700;cursor:pointer}
+.coach-answers .primary{background:var(--accent);color:var(--accent-ink)}

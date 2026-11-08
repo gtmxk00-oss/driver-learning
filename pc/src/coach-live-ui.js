@@ -87,6 +87,10 @@
     $('coachModeDemo').classList.toggle('active',!isLive);$('coachModeDemo').setAttribute('aria-pressed',String(!isLive));
     $('coachModeLive').classList.toggle('active',isLive);$('coachModeLive').setAttribute('aria-pressed',String(isLive));
     $('coachDemoPanel').hidden=isLive;$('coachLivePanel').hidden=!isLive;
+    // The car-link mode (coach-guidance-ui.js) has its own panel and button; leaving it for demo or live clears both.
+    document.body.classList.remove('coach-guidance');
+    if($('coachGuidancePanel'))$('coachGuidancePanel').hidden=true;
+    $('coachModeGuidance')?.classList.remove('active');$('coachModeGuidance')?.setAttribute('aria-pressed','false');
     $('coachNote').textContent=NOTE[isLive?'live':'demo'];
     document.dispatchEvent(new CustomEvent('rm-coach-mode',{detail:{mode}}));
     if(isLive)render();

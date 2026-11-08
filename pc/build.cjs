@@ -17,12 +17,14 @@ html=html.replace('/* APP_COACH_UI */',()=>fs.readFileSync(path.join(root,'src/c
 html=html.replace('/* APP_COACH_STYLES */',()=>fs.readFileSync(path.join(root,'src/coach.css'),'utf8'));
 html=html.replace('/* APP_COACH_LIVE */',()=>fs.readFileSync(path.join(root,'src/coach-live.js'),'utf8'));
 html=html.replace('/* APP_COACH_LIVE_UI */',()=>fs.readFileSync(path.join(root,'src/coach-live-ui.js'),'utf8'));
+html=html.replace('/* APP_COACH_GUIDANCE */',()=>fs.readFileSync(path.join(root,'src/coach-guidance.js'),'utf8'));
+html=html.replace('/* APP_COACH_GUIDANCE_UI */',()=>fs.readFileSync(path.join(root,'src/coach-guidance-ui.js'),'utf8'));
 html=html.replace('/* APP_CODE */',fs.readFileSync(path.join(root,'src/app.js'),'utf8'));
 html=html.replace('/* APP_NAV_UI */',fs.readFileSync(path.join(root,'src/navigation-ui.js'),'utf8'));
 html=html.replace('/* APP_ROAD_TRACKER */',fs.readFileSync(path.join(root,'src/road-tracker.js'),'utf8'));
 html=html.replace('/* APP_REAL_UI */',fs.readFileSync(path.join(root,'src/real-road-ui.js'),'utf8'));
 html=html.replace('/* APP_REAL_STYLES */',()=>fs.readFileSync(path.join(root,'src/real-road.css'),'utf8'));
-if(/\/\* (APP_(TOKENS|THEME|MODE|STYLES|COACH_LIVE|COACH_LIVE_UI|ENGINE|TRAFFIC|NAVIGATION|CODE|NAV_UI|ROAD_TRACKER|REAL_UI|REAL_STYLES|COACH|COACH_DEMO|COACH_UI|COACH_STYLES)|LEAFLET_(STYLES|CODE)) \*\//.test(html))throw new Error('Missing build input');
+if(/\/\* (APP_(TOKENS|THEME|MODE|STYLES|COACH_LIVE|COACH_LIVE_UI|COACH_GUIDANCE|COACH_GUIDANCE_UI|ENGINE|TRAFFIC|NAVIGATION|CODE|NAV_UI|ROAD_TRACKER|REAL_UI|REAL_STYLES|COACH|COACH_DEMO|COACH_UI|COACH_STYLES)|LEAFLET_(STYLES|CODE)) \*\//.test(html))throw new Error('Missing build input');
 for(const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g))new (require('node:vm').Script)(match[1]);
 fs.mkdirSync(path.join(root,'dist'),{recursive:true});
 fs.writeFileSync(path.join(root,'dist/index.html'),html);
