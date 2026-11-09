@@ -38,6 +38,14 @@ public class CoachActivity extends Activity {
             accent=dark?0xFFFF7A26:0xFFFF6A1A;accentInk=0xFF1B0B02;accentText=dark?0xFFFF9550:0xFFB23C06;accentSoft=dark?0xFF3A2214:0xFFFDE3D2;
             strong=dark?0xFF22232A:0xFF1B1C21;onStrong=0xFFF4F1EB;onStrong2=0xFFB9B5AC;
         }
+        private Palette(int canvas,int surface,int surface2,int ink,int ink2,int accent,int accentInk,int accentText,int accentSoft,int strong,int onStrong,int onStrong2) {
+            this.canvas=canvas;this.surface=surface;this.surface2=surface2;this.ink=ink;this.ink2=ink2;this.accent=accent;this.accentInk=accentInk;this.accentText=accentText;this.accentSoft=accentSoft;this.strong=strong;this.onStrong=onStrong;this.onStrong2=onStrong2;
+        }
+        /** The look of the built-in Pleos Connect screens, for the car-link screen that sits among them: white and grey grounds, black ink, a black main button (white on black at night). Every text pair keeps at least 4.5:1. */
+        public static Palette pleos(boolean dark) {
+            return dark?new Palette(0xFF0F0F10,0xFF1A1A1C,0xFF2A2A2D,0xFFF5F5F5,0xFFB0B0B3,0xFFF5F5F5,0xFF111111,0xFFF5F5F5,0xFF4A4A4E,0xFFF5F5F5,0xFF111111,0xFF555555)
+                :new Palette(0xFFF4F4F4,0xFFFFFFFF,0xFFEFEFEF,0xFF111111,0xFF666666,0xFF111111,0xFFFFFFFF,0xFF111111,0xFFD6D6D6,0xFF111111,0xFFFFFFFF,0xFFBBBBBB);
+        }
     }
     // The virtual road is a night map in both modes, as on the PC.
     private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_ROAD=0xFF30333B,SIM_LANE=0xFF5B5F69,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_ROUTE=0xFFFF7A26,SIM_GOOD=0xFF5CCF95;

@@ -34,7 +34,8 @@ import kr.routememory.core.GuidanceSession.Outcome;
  */
 public class GuidanceActivity extends Activity implements PleosBridge.Host,PleosVoice.Host {
     static final String BADGE="Pleos SDK 5종 연동 · 차량 신호 9종·내비 이벤트·위치·근접 알림·음성 인식·합성 실제 · 공식 에뮬레이터 또는 실차 필요";
-    private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_LANE=0xFF5B5F69,SIM_ROUTE=0xFFFF7A26;
+    // Set in onCreate from the day or night mode: the turn card is black with white ink, as on the cluster; the rest is light.
+    private int SIM_BG,SIM_PANEL,SIM_INK,SIM_INK2,SIM_LANE,SIM_ROUTE=0xFFFF7A26,METRIC,STROKE,PLAIN;
     private static final long SPEAK_MS=4400,LONG_MS=9000;
     private static final int REQUEST_SPEED=41;
     private static final String CAR_SPEED_PERMISSION="android.car.permission.CAR_SPEED";
@@ -46,13 +47,15 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private String vehicleState="연결 전",naviState="연결 전",speedSource="-",locationState="-",voiceState="준비 전",turnLabel="다음 회전 없음",naviStatus="-",gear="-",destination="";
     private int meters=-1,speedKph=-1; private Signal signal=Signal.OFF; private boolean restricted,heardIsAnswer;
     private TextView headline,distance,metrics,tag,chips,statusLabel,status,facts,note,laneText; private LinearLayout lanes;
-    private LinearLayout statusBox,typeBar,answers,controls,memoRow; private Button connect,yes,no,memoButton,voiceButton;
+    private LinearLayout statusBox,typeBar,answers,controls,memoRow,rows; private Button connect,yes,no,memoButton,voiceButton;
 
     @Override protected void onCreate(Bundle saved) {
         boolean night=(getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
         String mode=getSharedPreferences("coach",MODE_PRIVATE).getString("mode","auto");
         boolean dark=mode.equals("dark")||mode.equals("auto")&&night;
-        p=new CoachActivity.Palette(dark);
+        p=CoachActivity.Palette.pleos(dark);
+        SIM_BG=dark?0xFF0F0F10:0xFFF4F4F4;SIM_PANEL=dark?0xFF1F1F22:0xFF111111;SIM_INK=dark?0xFFF5F5F5:0xFFFFFFFF;SIM_INK2=0xFFB5B5B8;SIM_LANE=0xFF55555A;
+        METRIC=dark?0xFFB0B0B3:0xFF444444;STROKE=dark?0xFF3A3A3E:0xFFCFCFCF;PLAIN=dark?0xFF1A1A1C:0xFFFFFFFF;
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(saved);
         session=new GuidanceSession(load());
         bridge=new PleosBridge(this,session,this);
@@ -82,11 +85,11 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     }
 
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
-    private TextView text(int size,int color,boolean bold){TextView t=new TextView(this);t.setTextSize(size);t.setTextColor(color);t.setLineSpacing(dp(2),1);if(bold)t.setTypeface(null,Typeface.BOLD);return t;}
+    private TextView text(int size,int color,boolean bold){TextView t=new TextView(this);t.setTextSize(size);t.setTextColor(color);t.setLineSpacing(0,1.4f);if(bold)t.setTypeface(null,Typeface.BOLD);return t;}
     private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private Button button(String title,boolean primary,Runnable action) {
         Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextColor(primary?p.accentInk:p.ink);
-        b.setBackground(round(primary?p.accent:p.surface2,10));b.setMinHeight(dp(48));b.setOnClickListener(v->action.run());return b;
+        GradientDrawable shape=round(primary?p.accent:PLAIN,10);if(!primary)shape.setStroke(dp(1),STROKE);b.setBackground(shape);b.setMinHeight(dp(72));b.setTextSize(22);b.setOnClickListener(v->action.run());return b;
     }
     private LinearLayout.LayoutParams grow(int leftMargin){LinearLayout.LayoutParams l=new LinearLayout.LayoutParams(0,-2,1);l.leftMargin=leftMargin;return l;}
     private void build() {
@@ -94,40 +97,42 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(p.canvas);
         // The Pleos home screen draws its own close button over the top-left corner of a task; the two top rows keep clear of it.
         int closeInset=dp(72);
-        TextView badge=text(13,p.ink,true);badge.setText(BADGE);badge.setPadding(closeInset,dp(10),dp(16),dp(6));root.addView(badge);
+        TextView badge=text(18,p.ink,true);badge.setText(BADGE);badge.setPadding(closeInset,dp(10),dp(16),dp(6));root.addView(badge);
         LinearLayout stage=new LinearLayout(this);stage.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
         root.addView(stage,new LinearLayout.LayoutParams(-1,0,1));
 
         // Bottom-aligned: while driving, the Pleos emulator lays its camera preview over the top-left of the task.
         LinearLayout navi=new LinearLayout(this);navi.setOrientation(LinearLayout.VERTICAL);navi.setBackgroundColor(SIM_BG);navi.setGravity(Gravity.BOTTOM);
         LinearLayout head=new LinearLayout(this);head.setBackgroundColor(SIM_PANEL);head.setPadding(closeInset,dp(14),dp(18),dp(14));head.setGravity(Gravity.CENTER_VERTICAL);
-        headline=text(24,SIM_INK,true);distance=text(24,SIM_INK,true);
+        headline=text(34,SIM_INK,true);distance=text(34,SIM_INK,true);
         head.addView(headline,new LinearLayout.LayoutParams(0,-2,1));head.addView(distance);navi.addView(head);
         // The lane strip under the turn: four lanes, the one to be in lit, and a word on when to move.
         LinearLayout laneRow=new LinearLayout(this);laneRow.setBackgroundColor(SIM_PANEL);laneRow.setPadding(closeInset,0,dp(18),dp(12));laneRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView laneLabel=text(12,SIM_INK2,true);laneLabel.setText("추천 차선");laneLabel.setPadding(0,0,dp(10),0);laneRow.addView(laneLabel);
+        TextView laneLabel=text(18,SIM_INK2,true);laneLabel.setText("추천 차선");laneLabel.setPadding(0,0,dp(10),0);laneRow.addView(laneLabel);
         lanes=new LinearLayout(this);
-        for(int i=0;i<4;i++){View v=new View(this);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(22),dp(9));lp.rightMargin=dp(3);v.setBackground(round(SIM_LANE,3));lanes.addView(v,lp);}
+        for(int i=0;i<4;i++){View v=new View(this);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(dp(40),dp(14));lp.rightMargin=dp(5);v.setBackground(round(SIM_LANE,3));lanes.addView(v,lp);}
         laneRow.addView(lanes);
-        laneText=text(14,SIM_INK,true);laneText.setPadding(dp(10),0,0,0);laneRow.addView(laneText,new LinearLayout.LayoutParams(0,-2,1));
+        laneText=text(22,SIM_INK,true);laneText.setPadding(dp(10),0,0,0);laneRow.addView(laneText,new LinearLayout.LayoutParams(0,-2,1));
         navi.addView(laneRow);
-        metrics=text(15,SIM_INK2,false);metrics.setPadding(dp(18),dp(14),dp(18),dp(14));metrics.setLineSpacing(dp(6),1);navi.addView(metrics);
+        // The facts are shown as rows (fillRows); the one text block stays only as their source.
+        metrics=text(15,METRIC,false);metrics.setVisibility(View.GONE);navi.addView(metrics);
+        rows=new LinearLayout(this);rows.setOrientation(LinearLayout.VERTICAL);rows.setPadding(dp(24),dp(6),dp(24),dp(10));navi.addView(rows);
         stage.addView(navi,wide?new LinearLayout.LayoutParams(0,-1,6):new LinearLayout.LayoutParams(-1,0,5));
 
         LinearLayout app=new LinearLayout(this);app.setOrientation(LinearLayout.VERTICAL);app.setBackgroundColor(p.surface);app.setPadding(dp(16),dp(12),dp(16),dp(12));
-        TextView brand=text(18,p.accentText,true);brand.setText("운전자학습");app.addView(brand);
-        tag=text(15,p.ink,true);app.addView(tag);chips=text(13,p.ink2,false);app.addView(chips);
+        TextView brand=text(24,p.accentText,true);brand.setText("운전자학습");app.addView(brand);
+        tag=text(22,p.ink,true);app.addView(tag);chips=text(20,p.ink2,false);app.addView(chips);
         statusBox=new LinearLayout(this);statusBox.setOrientation(LinearLayout.VERTICAL);statusBox.setGravity(Gravity.CENTER_VERTICAL);statusBox.setPadding(dp(14),dp(10),dp(14),dp(10));
-        statusLabel=text(12,p.ink2,true);status=text(18,p.ink,true);statusBox.addView(statusLabel);statusBox.addView(status);
+        statusLabel=text(20,p.ink2,true);status=text(32,p.ink,true);statusBox.addView(statusLabel);statusBox.addView(status);
         answers=new LinearLayout(this);answers.setPadding(0,dp(8),0,0);
         yes=button("네, 놓쳤어요",true,()->answer(true));answers.addView(yes,new LinearLayout.LayoutParams(0,-2,1));
         no=button("아니요",false,()->answer(false));answers.addView(no,grow(dp(8)));
         statusBox.addView(answers);
         LinearLayout.LayoutParams boxParams=new LinearLayout.LayoutParams(-1,0,1);boxParams.topMargin=dp(8);boxParams.bottomMargin=dp(8);app.addView(statusBox,boxParams);
-        facts=text(13,p.ink2,false);app.addView(facts);
+        facts=text(22,p.ink2,false);app.addView(facts);
         stage.addView(app,wide?new LinearLayout.LayoutParams(0,-1,4):new LinearLayout.LayoutParams(-1,0,4));
 
-        note=text(14,p.ink,false);note.setPadding(dp(16),dp(8),dp(16),dp(4));
+        note=text(22,p.ink,false);note.setPadding(dp(16),dp(8),dp(16),dp(4));
         note.setText("연결을 누르면 Vehicle·NaviHelper·FusedLocation·SpeechToText·TextToSpeech SDK와 Car API에 붙습니다. 내비가 알려 주는 다음 회전, 방향지시등, 속도, 길 익숙도로 판단하고, 재탐색 뒤 정차하면 놓쳤는지 묻고 오늘 주행을 한 문장으로 정리합니다.");root.addView(note);
         controls=new LinearLayout(this);controls.setPadding(dp(16),dp(4),dp(16),dp(4));
         connect=button("연결",true,()->{if(bridge.connected()){bridge.release();voice.release();}else{askSpeedPermission();bridge.connect();voice.connect();speaker.connect();}render();});
@@ -215,6 +220,24 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
     private void statusView(int background,int label,int body,String labelText,String bodyText) {
         statusBox.setBackground(round(background,12));statusLabel.setTextColor(label);status.setTextColor(body);statusLabel.setText(labelText);status.setText(keepWords(bodyText));
     }
+    // The same facts as rows, the way the built-in settings list shows them: the name on the left, the value on the right,
+    // a hairline under each.
+    private void fillRows(String all) {
+        String[] lines=all.split("\n");
+        while(rows.getChildCount()<lines.length) {
+            LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout line=new LinearLayout(this);line.setPadding(0,dp(7),0,dp(7));line.setGravity(Gravity.CENTER_VERTICAL);
+            TextView name=text(22,METRIC,false);TextView value=text(22,p.ink,true);value.setGravity(Gravity.END);value.setPadding(dp(24),0,0,0);
+            line.addView(name);line.addView(value,new LinearLayout.LayoutParams(0,-2,1));
+            View rule=new View(this);rule.setBackgroundColor(STROKE);
+            row.addView(line);row.addView(rule,new LinearLayout.LayoutParams(-1,Math.max(1,dp(1))));rows.addView(row);
+        }
+        for(int i=0;i<rows.getChildCount();i++) {
+            View row=rows.getChildAt(i);if(i>=lines.length){row.setVisibility(View.GONE);continue;}
+            row.setVisibility(View.VISIBLE);int cut=lines[i].indexOf(": ");LinearLayout line=(LinearLayout)((LinearLayout)row).getChildAt(0);
+            ((TextView)line.getChildAt(0)).setText(cut<0?lines[i]:lines[i].substring(0,cut));((TextView)line.getChildAt(1)).setText(cut<0?"":lines[i].substring(cut+2));
+        }
+    }
     private static String familiarityLabel(Familiarity f){switch(f){case NEW:return "처음 가는 길";case KNOWN:return "몇 번 가 본 길";case FAMILIAR:return "익숙한 길";default:return "모름";}}
     private void render() {
         long now=System.currentTimeMillis();Profile profile=session.profile();DriverType type=profile.driverType;
@@ -226,6 +249,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
             +"\n내비 상태: "+naviStatus+(destination.isEmpty()?"":" · 목적지 "+destination)+"\n길 익숙도: "+familiarityLabel(session.familiarity())+" · 위치 "+locationState
             +"\n차량 신호: "+carLine+"\n도로: "+roadLine
             +"\nVehicle SDK: "+vehicleState+(bridge.seatLive()?" · 좌석":"")+(bridge.extrasLive().isEmpty()?"":" · "+bridge.extrasLive())+"\nNaviHelper SDK: "+naviState+"\nSpeechToText SDK: "+voiceState+"\nTextToSpeech SDK: "+speakerState);
+        fillRows(metrics.getText().toString());
         tag.setText("차량 연동 · "+type.label);
         chips.setText(type.label+" 유형 · "+(bridge.connected()?"연결됨":"연결 안 됨")+(session.passenger()?" · 승객 탑승":"")+(restricted?" · 주행 중 간소화":""));
         double rate=DriveCoach.signalRate(profile);
