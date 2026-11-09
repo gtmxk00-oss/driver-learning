@@ -48,7 +48,10 @@ public class CoachActivity extends Activity {
         }
     }
     // The virtual road is a night map in both modes, as on the PC.
-    private static final int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_ROAD=0xFF30333B,SIM_LANE=0xFF5B5F69,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_ROUTE=0xFFFF7A26,SIM_GOOD=0xFF5CCF95;
+    // Not final: the Pleos build swaps them for a light map in day mode (see onCreate).
+    private static int SIM_BG=0xFF14151A,SIM_PANEL=0xFF1D1F25,SIM_ROAD=0xFF30333B,SIM_LANE=0xFF5B5F69,SIM_INK=0xFFF1EEE8,SIM_INK2=0xFFB6B3AC,SIM_ROUTE=0xFFFF7A26,SIM_GOOD=0xFF5CCF95;
+    /** The Pleos Connect build follows the look of the built-in screens around it. */
+    protected boolean pleosLook(){return false;}
     private static final String[] MODES={"auto","light","dark"},MODE_NAMES={"화면 자동","화면 밝게","화면 어둡게"};
     private Palette p; private String mode="auto";
     private static final long TICK_MS=50;
@@ -65,7 +68,9 @@ public class CoachActivity extends Activity {
         mode=getSharedPreferences("coach",MODE_PRIVATE).getString("mode","auto");
         boolean night=(getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
         boolean dark=mode.equals("dark")||mode.equals("auto")&&night;
-        p=new Palette(dark);
+        p=pleosLook()?Palette.pleos(dark):new Palette(dark);
+        if(pleosLook()&&!dark){SIM_BG=0xFFF4F4F4;SIM_PANEL=0xFFFFFFFF;SIM_ROAD=0xFFCFCFD4;SIM_LANE=0xFFB0B0B5;SIM_INK=0xFF111111;SIM_INK2=0xFF666666;}
+        else{SIM_BG=0xFF14151A;SIM_PANEL=0xFF1D1F25;SIM_ROAD=0xFF30333B;SIM_LANE=0xFF5B5F69;SIM_INK=0xFFF1EEE8;SIM_INK2=0xFFB6B3AC;}
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(saved);
         if(saved!=null)position=saved.getDouble("position",0);
         build();render();
