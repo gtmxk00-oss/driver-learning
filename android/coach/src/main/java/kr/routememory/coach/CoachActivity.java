@@ -89,14 +89,14 @@ public class CoachActivity extends Activity {
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);if(voice!=null)voice.shutdown();super.onDestroy();}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
     private TextView text(int size,int color,boolean bold) {
-        TextView t=new TextView(this);t.setTextSize(size);t.setTextColor(color);t.setLineSpacing(dp(2),1);
+        TextView t=new TextView(this);t.setTextSize(pleosLook()?size*1.45f:size);t.setTextColor(color);t.setLineSpacing(pleosLook()?0:dp(2),pleosLook()?1.35f:1);
         if(bold)t.setTypeface(null,Typeface.BOLD);
         return t;
     }
     private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));return d;}
     private Button button(String title,boolean primary,Runnable action) {
         Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextColor(primary?p.accentInk:p.ink);
-        b.setBackground(round(primary?p.accent:p.surface2,10));b.setMinHeight(dp(48));b.setOnClickListener(v->action.run());return b;
+        b.setBackground(round(primary?p.accent:p.surface2,10));b.setMinHeight(dp(pleosLook()?72:48));if(pleosLook())b.setTextSize(20);b.setOnClickListener(v->action.run());return b;
     }
     private void build() {
         boolean wide=getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;

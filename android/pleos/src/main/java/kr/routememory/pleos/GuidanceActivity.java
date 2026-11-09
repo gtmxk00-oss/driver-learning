@@ -34,7 +34,7 @@ import kr.routememory.core.GuidanceSession.Outcome;
  */
 public class GuidanceActivity extends Activity implements PleosBridge.Host,PleosVoice.Host {
     static final String BADGE="Pleos SDK 5종 연동 · 차량 신호 9종·내비 이벤트·위치·근접 알림·음성 인식·합성 실제 · 공식 에뮬레이터 또는 실차 필요";
-    // Set in onCreate from the day or night mode: the turn card is black with white ink, as on the cluster; the rest is light.
+    // Set in onCreate from the day or night mode: in day mode the turn card is white with black ink, like the demo screen and the built-in panels.
     private int SIM_BG,SIM_PANEL,SIM_INK,SIM_INK2,SIM_LANE,SIM_ROUTE=0xFFFF7A26,METRIC,STROKE,PLAIN;
     private static final long SPEAK_MS=4400,LONG_MS=9000;
     private static final int REQUEST_SPEED=41;
@@ -54,7 +54,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         String mode=getSharedPreferences("coach",MODE_PRIVATE).getString("mode","auto");
         boolean dark=mode.equals("dark")||mode.equals("auto")&&night;
         p=CoachActivity.Palette.pleos(dark);
-        SIM_BG=dark?0xFF0F0F10:0xFFF4F4F4;SIM_PANEL=dark?0xFF1F1F22:0xFF111111;SIM_INK=dark?0xFFF5F5F5:0xFFFFFFFF;SIM_INK2=0xFFB5B5B8;SIM_LANE=0xFF55555A;
+        SIM_BG=dark?0xFF0F0F10:0xFFF4F4F4;SIM_PANEL=dark?0xFF1F1F22:0xFFFFFFFF;SIM_INK=dark?0xFFF5F5F5:0xFF111111;SIM_INK2=dark?0xFFB5B5B8:0xFF666666;SIM_LANE=dark?0xFF55555A:0xFFB0B0B5;
         METRIC=dark?0xFFB0B0B3:0xFF444444;STROKE=dark?0xFF3A3A3E:0xFFCFCFCF;PLAIN=dark?0xFF1A1A1C:0xFFFFFFFF;
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(saved);
         session=new GuidanceSession(load());
