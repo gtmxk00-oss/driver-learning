@@ -42,6 +42,17 @@
 | `pc/` | PC 웹 시연. `src/coach.js`가 Android와 같은 규칙입니다 |
 | `apk/` | 실행용 release APK |
 
+## 시연 영상
+
+[Release v0.12.0-pleos](../../releases/tag/v0.12.0-pleos)에 두 편이 있습니다.
+
+| 영상 | 길이 | 내용 |
+| --- | --- | --- |
+| [본편](../../releases/download/v0.12.0-pleos/driver-learning-film.mp4) | 3분 44초 | 광고 형식입니다. 직접 그린 야간 주행 애니메이션 위에 핵심 기능을 한 문장씩 보여 줍니다 |
+| [상세 시연](../../releases/download/v0.12.0-pleos/driver-learning-detailed-demo.mp4) | 9분 54초 | 다섯 장으로 나눈 기능별 설명입니다. 5장에서 와이퍼·전조등·핸들·도착과 브레이크·안전벨트·주행 거리·근접 알림을 가상 차량 콘솔로 하나씩 실연합니다 |
+
+영상의 그림·배경음·효과음은 자체 제작이고, 음성은 AI 합성음입니다.
+
 ## 실행 방법
 
 ### APK
