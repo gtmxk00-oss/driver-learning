@@ -132,6 +132,23 @@ public final class DriveCoachTest {
         check(DriveCoach.summarySpeech(2,1,1,0,42.3).equals("오늘 42km를 달렸어요. 지켜본 회전 2곳 중 잘 지난 곳 1, 놓침 후보 1입니다."),"summary with distance");
         check(DriveCoach.summarySpeech(0,0,0,0,42.3).isEmpty(),"nothing watched: still nothing to say");
         check(DriveCoach.summarySpeech(1,1,0,0,3.26).startsWith("오늘 3.3km를"),"short trips keep a decimal");
+        // Road segments: half or more misses out of at least two outcomes make a hard one; own counts come before shared ones.
+        Profile seg=profile(DriverType.GENERAL);
+        DriveCoach.noteSegment(seg,"1,1",false,true);
+        check(!DriveCoach.hardSegment(seg,null,"1,1"),"one outcome is not enough");
+        DriveCoach.noteSegment(seg,"1,1",true,false);
+        check(DriveCoach.hardSegment(seg,null,"1,1"),"one miss and one pass: half were misses");
+        DriveCoach.noteSegment(seg,"1,1",true,false);
+        check(!DriveCoach.hardSegment(seg,null,"1,1"),"one miss in three is not a hard segment");
+        java.util.Map<String,int[]> pooled=new java.util.HashMap<>();pooled.put("1,1",new int[]{0,5,5});pooled.put("2,2",new int[]{1,3,2});
+        check(!DriveCoach.hardSegment(seg,pooled,"1,1")&&DriveCoach.hardSegment(seg,pooled,"2,2")&&!DriveCoach.hardSegment(seg,pooled,"3,3"),"own counts first, shared ones where there are none, nothing where nobody drove");
+        check(DriveCoach.decisionMeters(profile(DriverType.GENERAL),left("e"),-1,DriveCoach.Familiarity.UNKNOWN,false,false,true)==375,"hard segment: 300 becomes 375");
+        check(DriveCoach.copula("좌회전").equals("이에요")&&DriveCoach.copula("왼쪽 출구").equals("예요"),"the ending follows the final consonant");
+        Profile turned=profile(DriverType.GENERAL);DriveCoach.addMemo(turned,"t");
+        check(DriveCoach.decide(turned,new Turn("t",TurnType.TURN_LEFT),200,Signal.OFF,false).speech.equals("지난번 놓친 좌회전이에요. 미리 준비하세요."),"a remembered left turn is said with the right ending");
+        Profile segCopy=profile(DriverType.GENERAL);DriveCoach.restore(segCopy,DriveCoach.snapshot(seg)+"seg x 1 1 1\nseg 5,5 1 -1 0\nseg 6,6 0 0 0\n");
+        int[] kept3=DriveCoach.segment(segCopy,"1,1");
+        check(segCopy.segmentCount()==1&&kept3[0]==2&&kept3[1]==1&&kept3[2]==1,"the snapshot keeps the counts and skips lines it cannot trust");
         System.out.println("PASS: "+checks+" drive coach checks");
     }
 }

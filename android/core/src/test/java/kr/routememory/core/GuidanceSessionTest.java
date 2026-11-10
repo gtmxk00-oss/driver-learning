@@ -278,6 +278,48 @@ public final class GuidanceSessionTest {
         check(s.onProximity("p1",3500).event==Event.SPEAK,"near a remembered place without a route: spoken");
         s.onNavigationStatus(true,3600);
         check(s.onProximity("p1",3700).event==Event.NONE,"with a route the navigation's turns take over");
+        // Road segments: the cells driven on the way to a turn carry its outcome as plain counts.
+        s=fresh();s.onGear(false,0);s.onLocation(37.5000,127.0,0);
+        s.onTurn(exitLeft("g1"),500,0);s.onLocation(37.5010,127.0,100);s.onTurn(exitLeft("g1"),100,200);
+        s.onTurn(exitLeft("g2"),2000,300);s.onReroute(1000);s.onGear(true,2000);
+        String sc1=DriveCoach.cellKey(37.5000,127.0),sc2=DriveCoach.cellKey(37.5010,127.0);
+        check(!sc1.equals(sc2)&&DriveCoach.segment(s.profile(),sc1)==null,"a suspected miss is not on the road until the driver confirms it");
+        s.answer(true);s.afterAnswer();
+        check(DriveCoach.segment(s.profile(),sc1)[1]==1&&DriveCoach.segment(s.profile(),sc2)[1]==1,"confirmed: both approach cells carry one miss");
+        check(!s.hardSegment(),"one outcome does not make a hard segment");
+        // A second confirmed miss on the same approach makes it a hard segment, whatever the turn is called.
+        s.onGear(false,3000);s.onLocation(37.5000,127.0,3000);
+        s.onTurn(exitLeft("g1b"),500,3000);s.onTurn(exitLeft("g3"),2000,3100);s.onReroute(3500);s.onGear(true,4000);s.answer(true);s.afterAnswer();
+        s.onGear(false,5000);s.onLocation(37.5000,127.0,5000);
+        check(s.hardSegment(),"two misses out of two: a hard segment");
+        Outcome segHard=s.onTurn(new Turn("t9",TurnType.TURN_RIGHT),360,5000);
+        check(segHard.event==Event.SPEAK&&segHard.speech.equals("놓치기 쉬운 우회전이에요. 미리 준비하세요.")&&segHard.decision.limit==375,"not a weak type, yet spoken on a hard segment and 25% earlier: "+segHard.speech+" "+segHard.decision.limit);
+        // Another profile on the same device has no counts of its own there; the shared numbers stand in.
+        GuidanceSession segOther=new GuidanceSession(new Profile("car","차량",DriverType.TRUCK));
+        segOther.onGear(false,0);segOther.onLocation(37.5000,127.0,0);
+        check(!segOther.hardSegment(),"without shared counts the road is unknown to this profile");
+        segOther.setSharedSegments(DriveCoach.sharedSegments(java.util.Collections.singletonList(s.profile())));
+        check(segOther.hardSegment(),"the shared counts make it a hard segment for a profile that never drove it");
+        Outcome segTold=segOther.onTurn(new Turn("t9",TurnType.TURN_RIGHT),700,0);
+        check(segTold.event==Event.SPEAK&&segTold.speech.equals("놓치기 쉬운 우회전이에요. 미리 준비하세요.")&&segTold.decision.limit==975,"the truck profile is told, from further out: "+segTold.speech+" "+segTold.decision.limit);
+        // One clean pass of their own and this profile goes by its own count; the pass counts in the day's summary.
+        segOther.onTurn(new Turn("t9",TurnType.TURN_RIGHT),500,100);segOther.onSignal(Signal.RIGHT,150);segOther.onTurn(new Turn("n2",TurnType.TURN_LEFT),3000,200);
+        Outcome segEnd=segOther.onGear(true,300);
+        check(segEnd.event==Event.SUMMARY&&segEnd.speech.equals("오늘 지켜본 회전 1곳 중 잘 지난 곳 1, 놓침 후보 0입니다."),"a turn watched for its segment is in the summary: "+segEnd.speech);
+        segOther.onGear(false,400);segOther.onLocation(37.5000,127.0,400);
+        check(DriveCoach.segment(segOther.profile(),sc1)[0]==1&&!segOther.hardSegment(),"one clean pass of their own and this profile goes by its own count");
+        Profile segKept=new Profile("k","K",DriverType.GENERAL);DriveCoach.restore(segKept,DriveCoach.snapshot(s.profile()));
+        check(segKept.segmentCount()==2&&DriveCoach.segment(segKept,sc1)[1]==2&&DriveCoach.segment(segKept,sc2)[2]==1,"segment counts survive the snapshot");
+        DriveCoach.clearMemory(segKept);check(segKept.segmentCount()==0,"erasing the memory erases the segments");
+        // "No" to the question leaves the road untouched; a pass without the signal is counted as such.
+        GuidanceSession segChose=fresh();segChose.onGear(false,0);segChose.onLocation(37.6,127.1,0);segChose.onTurn(exitLeft("x1"),100,0);segChose.onReroute(500);segChose.onGear(true,1000);segChose.answer(false);
+        check(segChose.profile().segmentCount()==0,"a deliberate change of route writes nothing on the road");
+        GuidanceSession segQuiet=fresh();segQuiet.onGear(false,0);segQuiet.onLocation(37.7,127.2,0);segQuiet.onTurn(exitLeft("q1"),300,0);segQuiet.onTurn(exitLeft("q2"),3000,100);segQuiet.onGear(true,200);
+        int[] sq=DriveCoach.segment(segQuiet.profile(),DriveCoach.cellKey(37.7,127.2));
+        check(sq!=null&&sq[0]==1&&sq[1]==0&&sq[2]==1,"an unsignalled pass: one pass, one without a signal");
+        // Without a position nothing is written.
+        GuidanceSession segBlind=fresh();segBlind.onGear(false,0);segBlind.onTurn(exitLeft("b9"),300,0);segBlind.onTurn(exitLeft("b10"),3000,100);segBlind.onGear(true,200);
+        check(segBlind.profile().segmentCount()==0&&!segBlind.hardSegment(),"no position, no segment");
         System.out.println("GuidanceSession checks passed: "+checks);
     }
 }

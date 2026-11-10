@@ -67,6 +67,7 @@ public class GuidanceActivityTest {
         assertTrue(shown(activity,"아까 그 출구, 놓치셨나요?"));
         press(activity,"네, 놓쳤어요");settle();
         assertTrue(shown(activity,"기억 지점: 1곳"));
+        assertTrue(shown(activity,"구간 기록 0칸"));
         assertEquals(false,shown(activity,"아까 그 출구, 놓치셨나요?"));
         // Behind the question waits the trip summary.
         shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(2));settle();

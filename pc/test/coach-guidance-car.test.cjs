@@ -192,3 +192,44 @@ test('arrival on the brake or the belt coming off brings the question; the limit
   G.onNavigationStatus(s, true, 0);
   assert.equal(G.onProximity(s, 'p1').event, 'none');
 });
+test('road segments carry the outcome of the turns approached through them; other profiles\' counts stand in where a driver has none', () => {
+  const s = fresh(); G.onGear(s, false); G.onLocation(s, 37.5000, 127.0);
+  G.onTurn(s, exitLeft('g1'), 500, 0); G.onLocation(s, 37.5010, 127.0); G.onTurn(s, exitLeft('g1'), 100, 200);
+  G.onTurn(s, exitLeft('g2'), 2000, 300); G.onReroute(s, 1000); G.onGear(s, true);
+  const c1 = C.cellKey(37.5000, 127.0), c2 = C.cellKey(37.5010, 127.0);
+  assert.notEqual(c1, c2); assert.equal(C.segment(s.profile, c1), null);
+  G.answer(s, true); G.afterAnswer(s);
+  assert.deepEqual(C.segment(s.profile, c1), [0, 1, 1]); assert.deepEqual(C.segment(s.profile, c2), [0, 1, 1]);
+  assert.equal(G.hardSegment(s), false);
+  // A second confirmed miss on the same approach makes it a hard segment, whatever the turn is called.
+  G.onGear(s, false); G.onLocation(s, 37.5000, 127.0);
+  G.onTurn(s, exitLeft('g1b'), 500, 3000); G.onTurn(s, exitLeft('g3'), 2000, 3100); G.onReroute(s, 3500); G.onGear(s, true); G.answer(s, true); G.afterAnswer(s);
+  G.onGear(s, false); G.onLocation(s, 37.5000, 127.0);
+  assert.equal(G.hardSegment(s), true);
+  const hard = G.onTurn(s, { id: 't9', type: 'turn-right' }, 360, 5000);
+  assert.equal(hard.event, 'speak'); assert.equal(hard.speech, '놓치기 쉬운 우회전이에요. 미리 준비하세요.'); assert.equal(hard.decision.limit, 375);
+  // Another profile on the same device has no counts of its own there; the shared numbers stand in.
+  const other = G.create(C.createProfile('car', '차량', 'truck'));
+  G.onGear(other, false); G.onLocation(other, 37.5000, 127.0);
+  assert.equal(G.hardSegment(other), false);
+  G.setSharedSegments(other, C.sharedSegments([s.profile]));
+  assert.equal(G.hardSegment(other), true);
+  const told = G.onTurn(other, { id: 't9', type: 'turn-right' }, 700, 0);
+  assert.equal(told.event, 'speak'); assert.equal(told.speech, '놓치기 쉬운 우회전이에요. 미리 준비하세요.'); assert.equal(told.decision.limit, 975);
+  // One clean pass of their own and this profile goes by its own count; the pass counts in the day's summary.
+  G.onTurn(other, { id: 't9', type: 'turn-right' }, 500, 100); G.onSignal(other, 'right', 150); G.onTurn(other, { id: 'n2', type: 'turn-left' }, 3000, 200);
+  const end = G.onGear(other, true);
+  assert.equal(end.event, 'summary'); assert.equal(end.speech, '오늘 지켜본 회전 1곳 중 잘 지난 곳 1, 놓침 후보 0입니다.');
+  G.onGear(other, false); G.onLocation(other, 37.5000, 127.0);
+  assert.deepEqual(C.segment(other.profile, c1), [1, 0, 0]); assert.equal(G.hardSegment(other), false);
+  const kept = C.createProfile('k', 'K'); C.restore(kept, C.snapshot(s.profile));
+  assert.deepEqual(kept.segments, { [c1]: [0, 2, 2], [c2]: [0, 1, 1] });
+  C.clearMemory(kept); assert.deepEqual(kept.segments, {});
+  // "No" to the question leaves the road untouched; a pass without the signal is counted as such; no position, no segment.
+  const chose = fresh(); G.onGear(chose, false); G.onLocation(chose, 37.6, 127.1); G.onTurn(chose, exitLeft('x1'), 100, 0); G.onReroute(chose, 500); G.onGear(chose, true); G.answer(chose, false);
+  assert.deepEqual(chose.profile.segments, {});
+  const quiet = fresh(); G.onGear(quiet, false); G.onLocation(quiet, 37.7, 127.2); G.onTurn(quiet, exitLeft('q1'), 300, 0); G.onTurn(quiet, exitLeft('q2'), 3000, 100); G.onGear(quiet, true);
+  assert.deepEqual(C.segment(quiet.profile, C.cellKey(37.7, 127.2)), [1, 0, 1]);
+  const blind = fresh(); G.onGear(blind, false); G.onTurn(blind, exitLeft('b9'), 300, 0); G.onTurn(blind, exitLeft('b10'), 3000, 100); G.onGear(blind, true);
+  assert.deepEqual(blind.profile.segments, {}); assert.equal(G.hardSegment(blind), false);
+});

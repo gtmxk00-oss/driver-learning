@@ -31,6 +31,13 @@ public final class DriveCoach {
     public static final int BRIEF_LIMIT_KPH=80;
     /** Rain (wiper on) and night (low beam on) push the decision distance out: stopping distances grow and signs are read later. */
     static final double RAIN_FACTOR=1.25,NIGHT_FACTOR=1.15;
+    /**
+     * Road segments (the same cells of about 100 m) carry three counts from the turns approached through them: passed,
+     * missed, passed without a signal. Plain numbers kept on the road, not a model. A segment with this many outcomes of
+     * which half or more were misses is a hard one: the decision distance grows and the driver is told even when the
+     * turn type is not one of their weak ones.
+     */
+    public static final int SEGMENT_SAMPLES=2; static final double SEGMENT_FACTOR=1.25;
     public static final String LOWER_QUESTION="같은 유형을 세 번 잘 지나셨어요. 이 유형 알림을 줄일까요?";
     private DriveCoach() {}
 
@@ -64,6 +71,8 @@ public final class DriveCoach {
         public int speedKph=-1; public Familiarity familiarity=Familiarity.UNKNOWN; public boolean brief;
         /** Wiper on, low beam on: the car's own word on rain and night. */
         public boolean rain,night;
+        /** The road under the car is a hard segment (see SEGMENT_SAMPLES). */
+        public boolean hardSegment;
         public Context(int meters,Signal signal,boolean passenger){this.meters=meters;this.signal=signal;this.passenger=passenger;}
     }
     public static final class Decision {
@@ -97,11 +106,14 @@ public final class DriveCoach {
         final Map<String,Integer> roadCells=new HashMap<>();
         /** Where a remembered place is, when the car knew its position at the time; for the proximity alerts. */
         final Map<String,double[]> placeCoords=new HashMap<>();
+        /** Road segment to {passed, missed, passed without a signal}. */
+        final Map<String,int[]> segments=new HashMap<>();
         public Profile(String id,String name,DriverType driverType){this.id=id;this.name=name;this.driverType=driverType;}
         public int misses(TurnType type){return typeMisses.getOrDefault(type,0);}
         public int placeCount(){return places.size();}
         public int pendingCount(){return pending.size();}
         public int roadCellCount(){return roadCells.size();}
+        public int segmentCount(){return segments.size();}
     }
     public static void chooseWeak(Profile p,TurnType type){p.chosenWeak.add(type);}
     public static boolean isWeak(Profile p,TurnType type){return p.chosenWeak.contains(type)||p.misses(type)>=WEAK_AFTER;}
@@ -118,36 +130,45 @@ public final class DriveCoach {
     /** The decision distance for the speed the car is doing and the road it is on; -1 speed means unknown. */
     public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity){return decisionMeters(p,turn,speedKph,familiarity,false,false);}
     /** As above, further out in rain (wiper on) and at night (low beam on). */
-    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity,boolean rain,boolean night) {
+    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity,boolean rain,boolean night){return decisionMeters(p,turn,speedKph,familiarity,rain,night,false);}
+    /** As above, further out again on a hard road segment. */
+    public static int decisionMeters(Profile p,Turn turn,int speedKph,Familiarity familiarity,boolean rain,boolean night,boolean hardSegment) {
         double factor=speedKph<0?1:Math.max(SPEED_MIN,Math.min(SPEED_MAX,speedKph/(double)SPEED_REF_KPH));
         if(familiarity==Familiarity.NEW)factor*=NEW_ROAD_FACTOR;
         if(rain)factor*=RAIN_FACTOR;
         if(night)factor*=NIGHT_FACTOR;
+        if(hardSegment)factor*=SEGMENT_FACTOR;
         int meters=(int)Math.round(decisionMeters(p,turn)*factor);
         return Math.max(100,Math.min(p.driverType.maxMeters*2,meters));
     }
     /** The driver's own signalling rate over passed turns, or -1 until there are enough. */
     public static double signalRate(Profile p){return p.signalTurns<SIGNAL_SAMPLES?-1:p.signalOnTurns/(double)p.signalTurns;}
     public static boolean rarelySignals(Profile p){double rate=signalRate(p);return rate>=0&&rate<SIGNAL_RATE_MIN;}
-    static String speechFor(Profile p,Turn turn,boolean passenger,boolean brief) {
+    /** "예요" after a vowel, "이에요" after a final consonant: 왼쪽 출구예요, 좌회전이에요. */
+    static String copula(String word){char c=word.charAt(word.length()-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28!=0?"이에요":"예요";}
+    static String speechFor(Profile p,Turn turn,boolean passenger,boolean brief){return speechFor(p,turn,passenger,brief,false);}
+    static String speechFor(Profile p,Turn turn,boolean passenger,boolean brief,boolean hardSegment) {
         String detail=turn.detail;
         if(brief)return detail!=null?turn.type.label+", "+detail+".":turn.type.label+" 준비.";
         String with=detail!=null?detail+"입니다. ":"";
         if(p.driverType.neutralOnly||passenger)return turn.type.label+" 준비하세요."+(detail!=null?" "+detail+"입니다.":"");
-        if(remembers(p,turn.id))return "지난번 놓친 "+turn.type.label+"예요. "+with+"미리 준비하세요.";
+        if(remembers(p,turn.id))return "지난번 놓친 "+turn.type.label+copula(turn.type.label)+". "+with+"미리 준비하세요.";
+        // Said of the road, never of who missed it: the counts may be another profile's.
+        if(hardSegment)return "놓치기 쉬운 "+turn.type.label+copula(turn.type.label)+". "+with+"미리 준비하세요.";
         return turn.type.subject+" 곧 나옵니다. "+with+"미리 준비하세요.";
     }
     public static Decision decide(Profile p,Turn turn,int meters,Signal signal,boolean passenger){return decide(p,turn,new Context(meters,signal,passenger));}
     public static Decision decide(Profile p,Turn turn,Context c) {
-        int limit=decisionMeters(p,turn,c.speedKph,c.familiarity,c.rain,c.night);
+        int limit=decisionMeters(p,turn,c.speedKph,c.familiarity,c.rain,c.night,c.hardSegment);
         boolean remembered=remembers(p,turn.id);
-        if(!isWeak(p,turn.type)&&!remembered)return new Decision(Action.NONE,"not-weak","",limit);
+        // A hard segment is worth a word whatever the turn type; a road the driver knows well still goes by their own memory.
+        if(!isWeak(p,turn.type)&&!remembered&&!c.hardSegment)return new Decision(Action.NONE,"not-weak","",limit);
         // A road driven many times is known; only a spot actually missed there is worth a word.
         if(!remembered&&c.familiarity==Familiarity.FAMILIAR)return new Decision(Action.NONE,"familiar-road","",limit);
         if(c.meters>limit)return new Decision(Action.WAIT,"too-far","",limit);
         if(turn.type.side!=null&&c.signal==turn.type.side)return new Decision(Action.SILENT,"prepared","",limit);
         if(!remembered&&turn.type.side!=null&&rarelySignals(p))return new Decision(Action.SILENT,"rarely-signals","",limit);
-        return new Decision(Action.SPEAK,c.signal==Signal.OFF?"signal-off":"needs-attention",speechFor(p,turn,c.passenger,c.brief),limit);
+        return new Decision(Action.SPEAK,c.signal==Signal.OFF?"signal-off":"needs-attention",speechFor(p,turn,c.passenger,c.brief,c.hardSegment),limit);
     }
     /** Which side of the road the next turn wants. Korean lanes count from the left: the 1st lane is the leftmost. */
     public enum LaneSide {LEFT,RIGHT,ANY}
@@ -248,6 +269,28 @@ public final class DriveCoach {
         int n=p.roadCells.getOrDefault(cell,0);
         return n==0?Familiarity.NEW:n<FAMILIAR_AFTER?Familiarity.KNOWN:Familiarity.FAMILIAR;
     }
+    // Road segments: what happened at the turns approached through each cell, as three counts.
+    public static void noteSegment(Profile p,String cell,boolean passed,boolean noSignal) {
+        if(cell==null||cell.isEmpty())return;
+        int[] v=p.segments.computeIfAbsent(cell,k->new int[3]);
+        if(passed)v[0]++;else v[1]++;
+        if(noSignal)v[2]++;
+    }
+    /** {passed, missed, passed without a signal} for a segment, or null when nothing was seen there. */
+    public static int[] segment(Profile p,String cell){int[] v=cell==null?null:p.segments.get(cell);return v==null?null:v.clone();}
+    /** The counts of several profiles added up per segment: numbers only, nothing that says whose they were. */
+    public static Map<String,int[]> sharedSegments(Iterable<Profile> profiles) {
+        Map<String,int[]> out=new HashMap<>();
+        for(Profile p:profiles)for(Map.Entry<String,int[]> e:p.segments.entrySet()){int[] v=out.computeIfAbsent(e.getKey(),k->new int[3]);for(int i=0;i<3;i++)v[i]+=e.getValue()[i];}
+        return out;
+    }
+    /** A hard segment by this driver's own counts when there are any, otherwise by the shared ones (may be null). */
+    public static boolean hardSegment(Profile p,Map<String,int[]> shared,String cell) {
+        if(cell==null)return false;
+        int[] v=p.segments.get(cell);
+        if(v==null||v[0]+v[1]==0)v=shared==null?null:shared.get(cell);
+        return v!=null&&v[0]+v[1]>=SEGMENT_SAMPLES&&v[1]*2>=v[0]+v[1];
+    }
     /** One sentence when the car is parked after a trip; nothing when there was nothing to watch. */
     public static String summarySpeech(int watched,int passed,int missCandidates,int signalOff){return summarySpeech(watched,passed,missCandidates,signalOff,-1);}
     /** As above, opening with the trip's distance when the odometer gave one (negative when unknown). */
@@ -274,6 +317,7 @@ public final class DriveCoach {
         for(Map.Entry<String,String> e:p.placeLabels.entrySet())b.append("label ").append(e.getKey().replace('\t',' ')).append('\t').append(e.getValue()).append('\n');
         for(Map.Entry<String,Integer> e:p.roadCells.entrySet())b.append("cell ").append(e.getKey()).append(' ').append(e.getValue()).append('\n');
         for(Map.Entry<String,double[]> e:p.placeCoords.entrySet())b.append("coord ").append(e.getKey().replace('\t',' ')).append('\t').append(e.getValue()[0]).append('\t').append(e.getValue()[1]).append('\n');
+        for(Map.Entry<String,int[]> e:p.segments.entrySet())b.append("seg ").append(e.getKey()).append(' ').append(e.getValue()[0]).append(' ').append(e.getValue()[1]).append(' ').append(e.getValue()[2]).append('\n');
         return b.toString();
     }
     /** Reads a snapshot back; lines it does not understand are skipped rather than trusted. */
@@ -291,6 +335,7 @@ public final class DriveCoach {
                 else if(line.startsWith("label ")){String[] f=line.substring(6).split("\t",2);if(f.length==2&&!f[0].isEmpty())labelPlace(p,f[0],f[1]);}
                 else if(line.startsWith("cell ")){String[] f=line.split(" ",3);int n=Integer.parseInt(f[2]);if(n>0&&f[1].matches("-?\\d+,-?\\d+"))p.roadCells.put(f[1],n);}
                 else if(line.startsWith("coord ")){String[] f=line.substring(6).split("\t",3);if(f.length==3&&!f[0].isEmpty())placeCoord(p,f[0],Double.parseDouble(f[1]),Double.parseDouble(f[2]));}
+                else if(line.startsWith("seg ")){String[] f=line.split(" ",5);if(f.length==5&&f[1].matches("-?\\d+,-?\\d+")){int a=Integer.parseInt(f[2]),m=Integer.parseInt(f[3]),n=Integer.parseInt(f[4]);if(a>=0&&m>=0&&n>=0&&a+m>0)p.segments.put(f[1],new int[]{a,m,Math.min(n,a+m)});}}
             } catch(RuntimeException ignored){}
         }
     }
@@ -309,7 +354,7 @@ public final class DriveCoach {
     /** Erases what this profile learned. Other profiles keep theirs. */
     public static void clearMemory(Profile p) {
         p.typeMisses.clear();p.passStreak.clear();p.chosenWeak.clear();p.places.clear();p.pending.clear();
-        p.destPlaces.clear();p.placeLabels.clear();p.roadCells.clear();p.placeCoords.clear();
+        p.destPlaces.clear();p.placeLabels.clear();p.roadCells.clear();p.placeCoords.clear();p.segments.clear();
         p.habitMeters=0;p.habitSamples=0;p.signalTurns=0;p.signalOnTurns=0;
     }
 }

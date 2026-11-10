@@ -149,3 +149,13 @@
 .ivi-screen .coach-lanes-label{font-size:1.1cqw}
 .ivi-screen .coach-lanes-strip{width:12cqw}
 .ivi-screen .coach-lanes-strip i{height:1.1cqw}
+
+/* The stage follows the look of the built-in Pleos Connect screens, as the Android build does (Palette.pleos): white
+   and grey grounds, black ink, a black main button and speaking card. One orange mark stays: the lane to be in and
+   the route. The PC tool around the stage keeps its own theme, in either mode. */
+.coach-stage{--canvas:#f4f4f4;--surface:#fff;--surface-2:#efefef;--ink:#111;--ink-2:#666;--accent:#111;--accent-ink:#fff;--accent-text:#111;--accent-soft:#d6d6d6;--strong:#111;--on-strong:#fff;--on-strong-2:#bbb;
+  --sim-bg:#f4f4f4;--sim-panel:#fff;--sim-chip:#efefef;--sim-ink:#111;--sim-ink-2:#666;--sim-road:#cfcfd4;--sim-road-edge:#bdbdc3;--sim-edge:#d9d9de;--sim-lane:#b0b0b5;--sim-route:#ff7a26;--sim-good:#1f9d4f}
+.coach-stage .coach-card-brand{color:var(--on-strong-2)}
+.coach-stage .coach-lanes{border-bottom:1px solid var(--sim-edge)}
+.coach-stage .coach-status.silent{background:var(--surface-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--sim-edge)}
+.coach-stage .coach-status.silent small{color:var(--ink-2)}

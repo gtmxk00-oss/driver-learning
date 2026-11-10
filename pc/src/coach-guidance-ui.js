@@ -11,6 +11,8 @@
   const NOTE='Android 차량 연동 화면과 같은 규칙입니다. 차량 신호는 Pleos Virtual Console처럼 아래 가상 차량 콘솔로 넣고, 공식 에뮬레이터·실차에서는 Vehicle SDK와 NaviHelper SDK 이벤트, 차량 속도, FusedLocation 위치, SpeechToText 음성이 이 자리에 들어옵니다.';
   const SIGNALS={off:'꺼짐',left:'왼쪽',right:'오른쪽'};
   const FAMILIAR={unknown:'모름',new:'처음 가는 길','known':'몇 번 가 본 길',familiar:'익숙한 길'};
+  // Three named road segments stand in for the position FusedLocation gives in the car.
+  const SPOTS={a:[37.5000,127.0000],b:[37.5200,127.0300],c:[37.5400,127.0600]};
   let saved={driverType:'general',memory:{}},session,spoken=null,flash=null,timer=0,steps=[],listening=null,beltOn=true;
 
   // What the driver confirmed stays in this browser, per driver type, as on the device.
@@ -22,6 +24,8 @@
     const profile=C.createProfile('car','차량',type);
     C.restore(profile,saved.memory[type]||'');
     session=G.create(profile);saved.driverType=type;spoken=null;flash=null;
+    // The other driver types in this browser leave their road segment counts for this one: numbers only, added up.
+    G.setSharedSegments(session,C.sharedSegments(Object.keys(C.driverTypes).filter(t=>t!==type).map(t=>{const other=C.createProfile('car','차량',t);C.restore(other,saved.memory[t]||'');return other;})));
   }
   function save(){saved.memory[session.profile.driverType]=C.snapshot(session.profile);try{localStorage.setItem(STORAGE,JSON.stringify(saved));}catch{}}
   const on=()=>document.body.classList.contains('coach-guidance');
@@ -48,7 +52,10 @@
   function sendTurn(type,meters,place,detail){take(G.onTurn(session,{id:placeId(type,place),type,detail:detail||''},meters,now(),gapOf()));}
   function clearTurn(){take(G.onTurn(session,null,-1,now()));}
   function setSignal(signal){take(G.onSignal(session,signal,now()));}
-  function setGear(parked){take(G.onGear(session,parked));}
+  // The virtual position: sent again when a trip starts, as the car's position keeps arriving.
+  function applySpot(){const spot=SPOTS[$('guidanceSpot')?.value];if(spot)take(G.onLocation(session,spot[0],spot[1]));}
+  function setSpot(){if(SPOTS[$('guidanceSpot')?.value])applySpot();else{session.lastLat=NaN;session.lastLon=NaN;session.lastCell=null;render();}}
+  function setGear(parked){take(G.onGear(session,parked));if(!parked)applySpot();}
   function setNavigating(flag){take(G.onNavigationStatus(session,flag,now()));}
   function reroute(){take(G.onReroute(session,now()));}
   function setSpeed(kph){const v=Math.max(0,Math.round(Number(kph)||0));if($('guidanceSpeed'))$('guidanceSpeed').value=String(v);take(G.onSpeed(session,v));}
@@ -109,6 +116,7 @@
     const type=C.turnTypes[cur.type];
     if(C.remembers(session.profile,cur.id))return{key:'wait',label:'지켜보는 중',text:'기억해 둔 곳이에요. 방향지시등이 꺼진 채 가까워지면 말합니다'};
     if(C.isWeak(session.profile,cur.type))return{key:'wait',label:'지켜보는 중',text:type.label+'은 약한 유형이에요. 방향지시등이 꺼진 채 가까워지면 말합니다'};
+    if(G.hardSegment(session))return{key:'wait',label:'지켜보는 중',text:'놓치기 쉬운 구간이에요. 방향지시등이 꺼진 채 가까워지면 말합니다'};
     return{key:'wait',label:'지켜보는 중',text:'이 회전은 아직 기록이 없습니다'};
   }
   function render(){
@@ -127,14 +135,17 @@
     const prnd=['P','R','N','D'].map(g=>'<b class="'+((g==='P'&&session.parked)||(g==='D'&&!session.parked)?'on':'')+'">'+g+'</b>').join('');
     const car='<svg class="ivi-car" viewBox="0 0 120 220" aria-hidden="true"><rect x="22" y="14" width="76" height="192" rx="30" fill="#d9d9de"/><path d="M34 60Q60 44 86 60L80 86H40Z" fill="#aeb0b8"/><path d="M38 150H82L86 178Q60 190 34 178Z" fill="#aeb0b8"/><rect x="14" y="40" width="12" height="30" rx="5" fill="#2a2b30"/><rect x="94" y="40" width="12" height="30" rx="5" fill="#2a2b30"/><rect x="14" y="150" width="12" height="30" rx="5" fill="#2a2b30"/><rect x="94" y="150" width="12" height="30" rx="5" fill="#2a2b30"/></svg>';
     const clusterSpeed=session.parked?'0 km/h':session.speedKph>=0?session.speedKph+' km/h':'주행 중';
-    const limit=C.decisionMeters(p,cur||{type:'exit-left'},session.speedKph,session.familiarity);
+    const hard=G.hardSegment(session),limit=C.decisionMeters(p,cur||{type:'exit-left'},session.speedKph,session.familiarity,session.rain,session.night,hard);
+    // The counts on the road under the car: the driver's own, or the other driver types' where there are none.
+    const own=session.lastCell?C.segment(p,session.lastCell):null,pooled=session.lastCell&&Object.prototype.hasOwnProperty.call(session.sharedSegments,session.lastCell)?session.sharedSegments[session.lastCell]:null;
+    const here=!session.lastCell?Object.keys(p.segments).length+'칸 · 위치 없음':own?'이 구간 놓침 '+own[1]+'/'+(own[0]+own[1]):pooled?'다른 유형 놓침 '+pooled[1]+'/'+(pooled[0]+pooled[1]):'이 구간 없음';
     const rate=C.signalRate(p);
     $('coachStage').innerHTML='<div class="ivi"><div class="ivi-top"><span class="ivi-glyph lock"></span><span class="ivi-glyph search"></span><em class="ivi-pill">'+BADGE+'</em><span class="ivi-driver">운</span><span class="ivi-glyph bt"></span><span class="ivi-glyph wifi"></span><time>'+clock+'</time></div>'+
       '<div class="ivi-body"><div class="ivi-cluster"><div class="ivi-cluster-top"><span class="ivi-fuel"><i></i>500 km</span><span class="ivi-speed">'+clusterSpeed+'</span><span class="ivi-prnd">'+prnd+'</span></div><div class="ivi-signals">'+arrow('left')+arrow('right')+'</div>'+car+'<div class="ivi-quick"><i></i><i></i><i></i><i></i></div></div>'+
       '<div class="ivi-task"><span class="ivi-close"></span><div class="ivi-badge">Pleos SDK 연동 · 방향지시등·기어·속도·위치·내비 이벤트 · PC에서는 가상 차량 콘솔</div><div class="coach-screen ivi-screen"><div class="coach-navi"><div class="coach-navi-head"><span>다음 회전</span><strong>'+esc(cur?C.turnTypes[cur.type].label+(cur.detail?' · '+cur.detail:''):'다음 회전 없음')+'</strong><b>'+(cur&&session.meters>=0?session.meters+'m':'')+'</b></div>'+lanesHtml(cur,session.meters,limit)+'<dl class="coach-live-body">'+metrics+'</dl></div>'+
       '<aside class="coach-app"><div class="coach-app-brand">운전자학습</div><div class="coach-tag">차량 연동 · '+esc(driver.label)+'</div><div class="coach-chips"><span>'+esc(driver.label)+' 유형</span><span class="on">연결됨 · 가상 콘솔</span></div>'+
       '<div class="coach-status '+esc(status.key)+'"><small>'+esc(status.label)+'</small><p>'+esc(status.text)+'</p>'+answers+'</div>'+
-      '<dl class="coach-facts"><div><dt>약한 유형</dt><dd>'+esc(weak.length?weak.join(', '):'없음')+'</dd></div><div><dt>기억 지점</dt><dd>'+p.places.length+'곳 · 확인 대기 '+p.pending.length+'건 · 길 '+Object.keys(p.roadCells).length+'칸</dd></div><div><dt>판단 거리</dt><dd>'+limit+'m <span class="coach-fact-sub">· 깜빡이 '+(rate<0?'기록 중':Math.round(rate*100)+'%')+'</span></dd></div></dl></aside></div></div></div>'+
+      '<dl class="coach-facts"><div><dt>약한 유형</dt><dd>'+esc(weak.length?weak.join(', '):'없음')+'</dd></div><div><dt>기억 지점</dt><dd>'+p.places.length+'곳 · 확인 대기 '+p.pending.length+'건 · 길 '+Object.keys(p.roadCells).length+'칸</dd></div><div><dt>구간 기록</dt><dd>'+esc(here)+(hard?' · 놓치기 쉬움':'')+'</dd></div><div><dt>판단 거리</dt><dd>'+limit+'m <span class="coach-fact-sub">· 깜빡이 '+(rate<0?'기록 중':Math.round(rate*100)+'%')+'</span></dd></div></dl></aside></div></div></div>'+
       '<div class="ivi-dock"><span class="ivi-temp">22.0°<small>A/C</small></span><span class="ivi-apps"><i></i><i></i><i></i><i></i><i class="on"></i></span><span class="ivi-temp">22.0°<small>A/C</small></span></div></div>';
     for(const b of $('coachStage').querySelectorAll('[data-answer]'))b.addEventListener('click',()=>answer(b.dataset.answer==='yes'));
     for(const [id,active] of [['guidanceSignalOff',session.signal==='off'],['guidanceSignalLeft',session.signal==='left'],['guidanceSignalRight',session.signal==='right'],['guidanceGearP',session.parked],['guidanceGearD',!session.parked],['guidanceNav',session.navigating]])$(id)?.classList.toggle('on',active);
@@ -144,8 +155,9 @@
     if($('guidanceLowBeam'))$('guidanceLowBeam').textContent=session.night?'전조등 끄기':'전조등 켜기';
     if($('guidanceBelt'))$('guidanceBelt').textContent=beltOn?'벨트 풀기':'벨트 매기';
     $('guidanceDriver').value=p.driverType;$('guidancePassenger').checked=session.passenger;
+    if($('guidanceFamiliarity'))$('guidanceFamiliarity').value=session.familiarity;
     if($('guidanceSpeedOut'))$('guidanceSpeedOut').textContent=(session.speedKph>=0?session.speedKph:0)+' km/h';
-    $('guidanceForget').disabled=!(p.places.length||weak.length||p.pending.length||Object.keys(p.roadCells).length);
+    $('guidanceForget').disabled=!(p.places.length||weak.length||p.pending.length||Object.keys(p.roadCells).length||Object.keys(p.segments).length);
   }
   function enter(){
     if(document.body.classList.contains('coach-live')&&$('liveToggle')?.textContent==='위치 끄기')$('liveToggle').click();
@@ -170,6 +182,7 @@
   $('guidanceReroute')?.addEventListener('click',reroute);
   $('guidanceSpeed')?.addEventListener('input',e=>setSpeed(e.target.value));
   $('guidanceFamiliarity')?.addEventListener('change',e=>setFamiliarity(e.target.value));
+  $('guidanceSpot')?.addEventListener('change',setSpot);
   $('guidanceRouteStart')?.addEventListener('click',()=>{startRoute($('guidanceDestination').value.trim());if(!session.navigating)setNavigating(true);});
   $('guidanceDestination')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('guidanceRouteStart').click();}});
   $('guidanceMemo')?.addEventListener('click',()=>memo());
@@ -186,7 +199,7 @@
   $('guidanceArrive')?.addEventListener('click',()=>{if(session.navigating)setNavigating(false);take(G.onArrival(session));});
   $('guidanceNear')?.addEventListener('click',()=>{const id=session.profile.places[session.profile.places.length-1];if(!id){note('근접 알림','기억 지점이 아직 없어요');render();return;}take(G.onProximity(session,id));});
   $('guidancePassenger')?.addEventListener('change',e=>{session.passenger=e.target.checked;render();});
-  $('guidanceDriver')?.addEventListener('change',e=>{stop();save();open(e.target.value);save();render();});
+  $('guidanceDriver')?.addEventListener('change',e=>{stop();save();open(e.target.value);applySpot();save();render();});
   $('guidanceMiss')?.addEventListener('click',missRun);
   $('guidanceAgain')?.addEventListener('click',againRun);
   $('guidanceTrip')?.addEventListener('click',tripRun);

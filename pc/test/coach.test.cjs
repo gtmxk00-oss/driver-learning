@@ -278,3 +278,20 @@ test('rain and night push the decision distance out; the summary can open with t
   assert.equal(C.summarySpeech(0, 0, 0, 0, 42.3), '');
   assert.match(C.summarySpeech(1, 1, 0, 0, 3.26), /^오늘 3\.3km를/);
 });
+test('a road segment with half or more misses out of at least two outcomes is a hard one; own counts come before shared ones', () => {
+  const p = C.createProfile('s', 'S');
+  C.noteSegment(p, '1,1', false, true);
+  assert.equal(C.hardSegment(p, null, '1,1'), false);
+  C.noteSegment(p, '1,1', true, false);
+  assert.equal(C.hardSegment(p, null, '1,1'), true);
+  C.noteSegment(p, '1,1', true, false);
+  assert.equal(C.hardSegment(p, null, '1,1'), false);
+  const pooled = { '1,1': [0, 5, 5], '2,2': [1, 3, 2] };
+  assert.equal(C.hardSegment(p, pooled, '1,1'), false); assert.equal(C.hardSegment(p, pooled, '2,2'), true); assert.equal(C.hardSegment(p, pooled, '3,3'), false);
+  assert.equal(C.decisionMeters(C.createProfile('g', 'G'), { id: 'e', type: 'exit-left' }, -1, 'unknown', false, false, true), 375);
+  const turned = C.createProfile('t', 'T'); C.addMemo(turned, 't');
+  assert.equal(C.decide(turned, { id: 't', type: 'turn-left' }, { meters: 200, signal: 'off', passenger: false }).speech, '지난번 놓친 좌회전이에요. 미리 준비하세요.');
+  const copy = C.createProfile('c', 'C'); C.restore(copy, C.snapshot(p));
+  C.restore(copy, JSON.stringify({ segments: { x: [1, 1, 1], '5,5': [1, -1, 0], '6,6': [0, 0, 0] } }));
+  assert.deepEqual(copy.segments, { '1,1': [2, 1, 1] });
+});

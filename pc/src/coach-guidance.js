@@ -15,6 +15,8 @@
   const STEER_TURN_DEG = 45, STEER_NEAR_METERS = 300;
   // Brake held at walking pace or less counts as stopped.
   const STOPPED_KPH = 3;
+  // Road cells driven while this close to the next turn carry that turn's outcome; the nearest few are kept.
+  const APPROACH_METERS = 600, APPROACH_CELLS = 8;
   const none = () => ({ event: 'none', speech: '', decision: null });
   const matches = (signal, type) => Boolean(C.turnTypes[type].side) && signal === C.turnTypes[type].side;
 
@@ -25,13 +27,28 @@
       pendingLower: null, queued: [], tripPassed: 0, tripMisses: 0, tripSignalOff: 0, tripSpoken: 0,
       // The extra car signals; each stays at "unknown" until the car reports it.
       rain: false, night: false, brake: false, arrived: false, steerDeg: 0, tripKm: -1, roadLimitKph: -1,
-      lastLat: NaN, lastLon: NaN, pendingCoords: {} };
+      lastLat: NaN, lastLon: NaN, pendingCoords: {},
+      // The cells driven on the way to the current turn and whether one of them was a hard segment, the cells of a
+      // suspected miss until the driver answers, and the counts the other profiles on this device left on the road.
+      approach: [], hardSeen: false, pendingCells: {}, sharedSegments: {} };
   }
   const stopped = s => s.brake && s.speedKph >= 0 && s.speedKph <= STOPPED_KPH;
   const canAsk = s => s.parked || s.arrived && stopped(s);
   const brief = s => s.speedKph >= C.BRIEF_SPEED_KPH || s.nextGapMeters > 0 && s.nextGapMeters <= C.BRIEF_GAP_METERS || s.roadLimitKph >= C.BRIEF_LIMIT_KPH;
+  // Remembers the cell under the car as part of the way to the current turn.
+  function trail(s) {
+    if (!s.current || !s.lastCell || s.meters < 0 || s.meters > APPROACH_METERS || s.approach.includes(s.lastCell)) return;
+    s.approach.push(s.lastCell);
+    if (s.approach.length > APPROACH_CELLS) s.approach.shift();
+  }
+  const resetApproach = s => { s.approach = []; s.hardSeen = false; };
+  // True when the road under the car is a hard segment right now.
+  const hardSegment = s => C.hardSegment(s.profile, s.sharedSegments, s.lastCell);
+  // The segment counts of the other profiles on this device, added up; used where this driver has none of their own.
+  function setSharedSegments(s, shared) { s.sharedSegments = shared && typeof shared === 'object' ? shared : {}; }
   function judge(s) {
-    const d = C.decide(s.profile, s.current, { meters: s.meters, signal: s.signal, passenger: s.passenger, speedKph: s.speedKph, familiarity: s.familiarity, brief: brief(s), rain: s.rain, night: s.night });
+    const hard = hardSegment(s); if (hard) s.hardSeen = true;
+    const d = C.decide(s.profile, s.current, { meters: s.meters, signal: s.signal, passenger: s.passenger, speedKph: s.speedKph, familiarity: s.familiarity, brief: brief(s), rain: s.rain, night: s.night, hardSegment: hard });
     // A driver who signalled once for this turn has prepared, even if the signal went off again.
     if (d.action === 'silent' || s.signalOnMeters > 0 && d.action === 'speak') return { event: 'silent', speech: '', decision: d };
     if (d.action === 'speak' && !s.announced) { s.announced = true; s.tripSpoken++; return { event: 'speak', speech: d.speech, decision: d }; }
@@ -41,21 +58,22 @@
   function settle(s) {
     if (!s.lastPassed || s.lastPassedJudged) return none();
     const previous = s.lastPassed; s.lastPassedJudged = true;
-    const watched = C.isWeak(s.profile, previous.turn.type) || C.remembers(s.profile, previous.turn.id);
+    const watched = C.isWeak(s.profile, previous.turn.type) || C.remembers(s.profile, previous.turn.id) || previous.hard;
     if (C.turnTypes[previous.turn.type].side && previous.signalOnMeters === 0) s.tripSignalOff++;
     if (C.notePass(s.profile, previous.turn, previous.signalOnMeters).offerLower) s.pendingLower = previous.turn.type;
+    for (const cell of previous.cells) C.noteSegment(s.profile, cell, true, Boolean(C.turnTypes[previous.turn.type].side) && previous.signalOnMeters === 0);
     if (!watched) return none();
     s.tripPassed++;
     return { event: 'passed', speech: '', decision: null };
   }
   function passTurn(s, now) {
     const settled = settle(s);
-    s.lastPassed = { turn: s.current, at: now, signalOnMeters: s.signalOnMeters, turned: s.turnedNear }; s.lastPassedJudged = false;
+    s.lastPassed = { turn: s.current, at: now, signalOnMeters: s.signalOnMeters, turned: s.turnedNear, hard: s.hardSeen, cells: s.approach.slice() }; s.lastPassedJudged = false;
     return settled;
   }
   function clearTurn(s, now) {
     const passed = s.current ? passTurn(s, now) : none();
-    s.current = null; s.meters = -1; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false;
+    s.current = null; s.meters = -1; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false; resetApproach(s);
     return passed;
   }
   function reviewIfPossible(s) {
@@ -70,11 +88,12 @@
     const changed = !s.current || s.current.id !== turn.id || remainingMeters > s.meters + MISS_NEAR_METERS;
     if (changed) {
       const passed = s.current ? passTurn(s, now) : null;
-      s.current = turn; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false;
-      if (passed && passed.event === 'passed') { s.meters = remainingMeters; return passed; }
+      s.current = turn; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false; resetApproach(s);
+      if (passed && passed.event === 'passed') { s.meters = remainingMeters; trail(s); return passed; }
     }
     s.meters = remainingMeters;
     if (matches(s.signal, turn.type) && s.signalOnMeters === 0) s.signalOnMeters = Math.max(1, remainingMeters);
+    trail(s);
     return judge(s);
   }
   const onCaution = (s, id, remainingMeters, now) => onTurn(s, { id, type: 'narrow-road' }, remainingMeters, now);
@@ -92,6 +111,7 @@
     if (cell === s.lastCell) return none();
     s.lastCell = cell;
     s.familiarity = C.familiarity(s.profile, cell);
+    trail(s);
     if (!s.parked && !s.tripCells.includes(cell)) { s.tripCells.push(cell); C.noteRoad(s.profile, cell); }
     return s.current ? judge(s) : none();
   }
@@ -104,7 +124,7 @@
     const b = C.briefingFor(s.profile, s.destination, { parked: s.parked, passenger: s.passenger });
     return b.speech ? { event: 'briefing', speech: b.speech, decision: null } : none();
   }
-  function tripStart(s) { s.tripPassed = 0; s.tripMisses = 0; s.tripSignalOff = 0; s.tripSpoken = 0; s.tripCells = []; s.lastCell = null; s.queued = []; s.arrived = false; s.tripKm = -1; s.turnedNear = false; }
+  function tripStart(s) { s.tripPassed = 0; s.tripMisses = 0; s.tripSignalOff = 0; s.tripSpoken = 0; s.tripCells = []; s.lastCell = null; s.queued = []; s.arrived = false; s.tripKm = -1; s.turnedNear = false; resetApproach(s); }
   // Parked after driving: the miss question first, then the offer to lower a type, then the summary, one at a time.
   function tripEnd(s) {
     s.queued = [];
@@ -129,21 +149,22 @@
   function onNavigationStatus(s, routeDrive, now) { s.navigating = routeDrive; return routeDrive ? none() : clearTurn(s, now); }
   // The navigation computed a new route on its own: the driver may have left the planned one.
   function onReroute(s, now) {
-    let suspect = null;
+    let suspect = null, cells = null;
     if (s.lastPassed && !s.lastPassedJudged && now - s.lastPassed.at <= MISS_WINDOW_MS && s.lastPassed.signalOnMeters === 0) {
       // The wheel turned at that exit: the driver took it, so the new route is not a miss.
       if (s.lastPassed.turned) return settle(s);
-      suspect = s.lastPassed.turn;
+      suspect = s.lastPassed.turn; cells = s.lastPassed.cells;
     } else if (s.current && s.meters >= 0 && s.meters <= MISS_NEAR_METERS && s.signalOnMeters === 0) {
       if (s.turnedNear) return none();
-      suspect = s.current;
+      suspect = s.current; cells = s.approach.slice();
     }
     if (!suspect) return none();
     C.noteMiss(s.profile, suspect); s.tripMisses++;
     if (Number.isFinite(s.lastLat)) s.pendingCoords[suspect.id] = [s.lastLat, s.lastLon];
+    if (cells && cells.length) s.pendingCells[suspect.id] = cells;
     // Blamed on the current turn, the turn before it was passed after all.
     if (suspect === s.current) settle(s);
-    s.lastPassedJudged = true; s.current = null; s.meters = -1; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false;
+    s.lastPassedJudged = true; s.current = null; s.meters = -1; s.announced = false; s.signalOnMeters = 0; s.turnedNear = false; resetApproach(s);
     const asked = reviewIfPossible(s);
     return asked.event === 'question' ? asked : { event: 'miss-candidate', speech: '', decision: null };
   }
@@ -151,7 +172,12 @@
   function answer(s, confirmed) {
     s.question = null; s.lowerAsked = null;
     const r = C.review(s.profile, confirmed, s.destination);
-    if (r) { const at = s.pendingCoords[r.id]; delete s.pendingCoords[r.id]; if (r.confirmed && at) C.placeCoord(s.profile, r.id, at[0], at[1]); }
+    if (r) {
+      const at = s.pendingCoords[r.id], cells = s.pendingCells[r.id]; delete s.pendingCoords[r.id]; delete s.pendingCells[r.id];
+      if (r.confirmed && at) C.placeCoord(s.profile, r.id, at[0], at[1]);
+      // A confirmed miss is written onto the road it was approached on; a deliberate change of route is not.
+      if (r.confirmed && cells) for (const cell of cells) C.noteSegment(s.profile, cell, false, Boolean(C.turnTypes[r.type].side));
+    }
     return r;
   }
   // The driver answered the offer to lower a weak type.
@@ -204,7 +230,7 @@
     s.tripSpoken++;
     return { event: 'speak', speech: d.speech, decision: d };
   }
-  return Object.freeze({ MISS_WINDOW_MS, MISS_NEAR_METERS, STEER_TURN_DEG, STEER_NEAR_METERS, STOPPED_KPH, QUESTION, create, onTurn, onCaution, onSignal, onSpeed, onLocation, setFamiliarity,
+  return Object.freeze({ MISS_WINDOW_MS, MISS_NEAR_METERS, STEER_TURN_DEG, STEER_NEAR_METERS, STOPPED_KPH, APPROACH_METERS, APPROACH_CELLS, QUESTION, create, hardSegment, setSharedSegments, onTurn, onCaution, onSignal, onSpeed, onLocation, setFamiliarity,
     onDestination, onGear, onNavigationStatus, onReroute, answer, answerLower, afterAnswer, memo,
     onWiper, onLowBeam, onSteering, onBrake, onArrival, onSeatBelt, onTripDistance, onSpeedLimit, onProximity });
 });

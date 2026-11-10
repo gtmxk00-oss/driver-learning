@@ -57,7 +57,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         SIM_BG=dark?0xFF0F0F10:0xFFF4F4F4;SIM_PANEL=dark?0xFF1F1F22:0xFFFFFFFF;SIM_INK=dark?0xFFF5F5F5:0xFF111111;SIM_INK2=dark?0xFFB5B5B8:0xFF666666;SIM_LANE=dark?0xFF55555A:0xFFB0B0B5;
         METRIC=dark?0xFFB0B0B3:0xFF444444;STROKE=dark?0xFF3A3A3E:0xFFCFCFCF;PLAIN=dark?0xFF1A1A1C:0xFFFFFFFF;
         setTheme(dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);super.onCreate(saved);
-        session=new GuidanceSession(load());
+        session=new GuidanceSession(load());shareSegments();
         bridge=new PleosBridge(this,session,this);
         voice=new PleosVoice(this,this);
         speaker=new PleosSpeaker(this,state->{speakerState=state;render();});
@@ -76,6 +76,19 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         Profile profile=new Profile("car","차량",type);
         DriveCoach.restore(profile,prefs.getString("memory-"+type.name(),""));
         return profile;
+    }
+    /**
+     * The other driver types on this device leave their road segment counts for this one: three numbers per segment,
+     * added up, with nothing that says whose they were. This stands in for counts pooled from many cars.
+     */
+    private void shareSegments() {
+        SharedPreferences prefs=getSharedPreferences("coach-guidance",MODE_PRIVATE);
+        java.util.List<Profile> others=new java.util.ArrayList<>();
+        for(DriverType type:DriverType.values()) {
+            if(type==session.profile().driverType)continue;
+            Profile other=new Profile("car","차량",type);DriveCoach.restore(other,prefs.getString("memory-"+type.name(),""));others.add(other);
+        }
+        session.setSharedSegments(DriveCoach.sharedSegments(others));
     }
     private void save() {
         Profile profile=session.profile();
@@ -146,7 +159,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         root.addView(memoRow);
         typeBar=new LinearLayout(this);typeBar.setPadding(dp(16),dp(4),dp(16),dp(10));
         for(DriverType type:DriverType.values()) {
-            Button b=button(type.label,false,()->{save();Profile next=new Profile("car","차량",type);DriveCoach.restore(next,getSharedPreferences("coach-guidance",MODE_PRIVATE).getString("memory-"+type.name(),""));session.setProfile(next);save();render();});
+            Button b=button(type.label,false,()->{save();Profile next=new Profile("car","차량",type);DriveCoach.restore(next,getSharedPreferences("coach-guidance",MODE_PRIVATE).getString("memory-"+type.name(),""));session.setProfile(next);shareSegments();save();render();});
             LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,-2,1);params.rightMargin=dp(6);typeBar.addView(b,params);
         }
         root.addView(typeBar);
@@ -253,8 +266,8 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         tag.setText("차량 연동 · "+type.label);
         chips.setText(type.label+" 유형 · "+(bridge.connected()?"연결됨":"연결 안 됨")+(session.passenger()?" · 승객 탑승":"")+(restricted?" · 주행 중 간소화":""));
         double rate=DriveCoach.signalRate(profile);
-        facts.setText("약한 유형: "+(DriveCoach.weakLabels(profile).isEmpty()?"없음":String.join(", ",DriveCoach.weakLabels(profile)))+"\n기억 지점: "+profile.placeCount()+"곳 · 확인 대기: "+profile.pendingCount()+"건 · 길 "+profile.roadCellCount()+"칸"
-            +"\n판단 거리: "+DriveCoach.decisionMeters(profile,session.currentTurn()==null?new DriveCoach.Turn("-",DriveCoach.TurnType.EXIT_LEFT):session.currentTurn(),session.speedKph(),session.familiarity())+"m · 깜빡이 "+(rate<0?"기록 중":Math.round(rate*100)+"%"));
+        facts.setText("약한 유형: "+(DriveCoach.weakLabels(profile).isEmpty()?"없음":String.join(", ",DriveCoach.weakLabels(profile)))+"\n기억 지점: "+profile.placeCount()+"곳 · 확인 대기: "+profile.pendingCount()+"건 · 길 "+profile.roadCellCount()+"칸 · 구간 기록 "+profile.segmentCount()+"칸"
+            +"\n판단 거리: "+DriveCoach.decisionMeters(profile,session.currentTurn()==null?new DriveCoach.Turn("-",DriveCoach.TurnType.EXIT_LEFT):session.currentTurn(),session.speedKph(),session.familiarity(),session.rain(),session.night(),session.hardSegment())+"m · 깜빡이 "+(rate<0?"기록 중":Math.round(rate*100)+"%"));
         connect.setText(bridge.connected()?"연결 해제":"연결");
         voiceButton.setText(voice.listening()?"듣는 중… (누르면 취소)":"말로 하기");
         for(int i=0;i<typeBar.getChildCount();i++)typeBar.getChildAt(i).setBackground(round(DriveCoach.DriverType.values()[i]==type?p.accentSoft:p.surface2,10));
@@ -269,6 +282,7 @@ public class GuidanceActivity extends Activity implements PleosBridge.Host,Pleos
         if(session.currentTurn()==null){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","내비가 다음 회전을 알려 주면 판단합니다");return;}
         if(DriveCoach.remembers(profile,session.currentTurn().id)){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","기억해 둔 곳 · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity())+"m");return;}
         if(DriveCoach.isWeak(profile,session.currentTurn().type)){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중",session.currentTurn().type.label+" · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity())+"m"+(session.familiarity()==Familiarity.FAMILIAR?" · 익숙한 길이라 말하지 않음":""));return;}
+        if(session.hardSegment()){statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","놓치기 쉬운 구간 · 판단 거리 "+DriveCoach.decisionMeters(profile,session.currentTurn(),session.speedKph(),session.familiarity(),session.rain(),session.night(),true)+"m");return;}
         statusView(p.surface2,p.ink2,p.ink,"지켜보는 중","이 회전은 아직 기록이 없습니다");
     }
 }

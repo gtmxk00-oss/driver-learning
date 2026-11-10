@@ -31,6 +31,11 @@
   const SPEED_REF_KPH = 60, SPEED_MIN = 0.5, SPEED_MAX = 2.0, NEW_ROAD_FACTOR = 1.3;
   // Rain (wiper on) and night (low beam on) push the decision distance out: stopping distances grow and signs are read later.
   const RAIN_FACTOR = 1.25, NIGHT_FACTOR = 1.15;
+  // Road segments (the same cells of about 100 m) carry three counts from the turns approached through them: passed,
+  // missed, passed without a signal. Plain numbers kept on the road, not a model. A segment with this many outcomes of
+  // which half or more were misses is a hard one: the decision distance grows and the driver is told even when the
+  // turn type is not one of their weak ones.
+  const SEGMENT_SAMPLES = 2, SEGMENT_FACTOR = 1.25;
   // A road cell driven on this many separate trips is familiar; weak types stay quiet there, remembered spots do not.
   const FAMILIAR_AFTER = 3;
   // Lane changes are signalled only about two thirds of the time (ensemble LSTM study); a driver who rarely signals
@@ -52,7 +57,7 @@
     if (!owns(driverTypes, driverType)) throw new TypeError('Unknown driver type');
     return { id: String(id), name: String(name), driverType, typeMisses: {}, passStreak: {},
       chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
-      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {} };
+      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {}, segments: {} };
   }
   function misses(profile, type) { return profile.typeMisses[type] || 0; }
   function chooseWeak(profile, type) {
@@ -62,7 +67,7 @@
   function isWeak(profile, type) { return profile.chosenWeak.includes(type) || misses(profile, type) >= WEAK_AFTER; }
   function remembers(profile, placeId) { return profile.places.includes(placeId); }
   // The decision distance for the speed the car is doing and the road it is on; a negative speed means unknown.
-  function decisionMeters(profile, turn, speedKph = -1, familiarity = 'unknown', rain = false, night = false) {
+  function decisionMeters(profile, turn, speedKph = -1, familiarity = 'unknown', rain = false, night = false, hardSegment = false) {
     const driver = driverTypes[profile.driverType];
     const start = Math.max(driver.baseMeters, profile.habitMeters || 0);
     const base = Math.min(driver.maxMeters, start + Math.min(MAX_STEPS, misses(profile, turn.type)) * STEP_METERS);
@@ -70,17 +75,22 @@
     if (familiarity === 'new') factor *= NEW_ROAD_FACTOR;
     if (rain) factor *= RAIN_FACTOR;
     if (night) factor *= NIGHT_FACTOR;
+    if (hardSegment) factor *= SEGMENT_FACTOR;
     return Math.max(100, Math.min(driver.maxMeters * 2, Math.round(base * factor)));
   }
   // The driver's own signalling rate over passed turns, or -1 until there are enough.
   function signalRate(profile) { return profile.signalTurns < SIGNAL_SAMPLES ? -1 : profile.signalOnTurns / profile.signalTurns; }
   function rarelySignals(profile) { const rate = signalRate(profile); return rate >= 0 && rate < SIGNAL_RATE_MIN; }
-  function speechFor(profile, turn, passenger, brief) {
+  // "예요" after a vowel, "이에요" after a final consonant: 왼쪽 출구예요, 좌회전이에요.
+  const copula = word => { const c = word.charCodeAt(word.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0 ? '이에요' : '예요'; };
+  function speechFor(profile, turn, passenger, brief, hardSegment) {
     const type = typeOf(turn.type), detail = detailOf(turn);
     if (brief) return detail ? type.label + ', ' + detail + '.' : type.label + ' 준비.';
     const withDetail = detail ? detail + '입니다. ' : '';
     if (driverTypes[profile.driverType].neutralOnly || passenger) return type.label + ' 준비하세요.' + (detail ? ' ' + detail + '입니다.' : '');
-    if (remembers(profile, turn.id)) return '지난번 놓친 ' + type.label + '예요. ' + withDetail + '미리 준비하세요.';
+    if (remembers(profile, turn.id)) return '지난번 놓친 ' + type.label + copula(type.label) + '. ' + withDetail + '미리 준비하세요.';
+    // Said of the road, never of who missed it: the counts may be another profile's.
+    if (hardSegment) return '놓치기 쉬운 ' + type.label + copula(type.label) + '. ' + withDetail + '미리 준비하세요.';
     return type.subject + ' 곧 나옵니다. ' + withDetail + '미리 준비하세요.';
   }
   // action: none = not this driver's concern, wait = too far, silent = already prepared, speak = say one sentence.
@@ -89,16 +99,18 @@
     const type = typeOf(turn.type);
     const speedKph = Number.isFinite(state.speedKph) ? state.speedKph : -1;
     const familiarity = familiarities.includes(state.familiarity) ? state.familiarity : 'unknown';
-    const limit = decisionMeters(profile, turn, speedKph, familiarity, Boolean(state.rain), Boolean(state.night));
+    const hard = Boolean(state.hardSegment);
+    const limit = decisionMeters(profile, turn, speedKph, familiarity, Boolean(state.rain), Boolean(state.night), hard);
     const remembered = remembers(profile, turn.id);
-    if (!isWeak(profile, turn.type) && !remembered) return { action: 'none', reason: 'not-weak', speech: '', limit };
+    // A hard segment is worth a word whatever the turn type; a road the driver knows well still goes by their own memory.
+    if (!isWeak(profile, turn.type) && !remembered && !hard) return { action: 'none', reason: 'not-weak', speech: '', limit };
     // A road driven many times is known; only a spot actually missed there is worth a word.
     if (!remembered && familiarity === 'familiar') return { action: 'none', reason: 'familiar-road', speech: '', limit };
     if (state.meters > limit) return { action: 'wait', reason: 'too-far', speech: '', limit };
     if (type.side && state.signal === type.side) return { action: 'silent', reason: 'prepared', speech: '', limit };
     if (!remembered && type.side && rarelySignals(profile)) return { action: 'silent', reason: 'rarely-signals', speech: '', limit };
     return { action: 'speak', reason: state.signal === 'off' ? 'signal-off' : 'needs-attention',
-      speech: speechFor(profile, turn, Boolean(state.passenger), Boolean(state.brief)), limit };
+      speech: speechFor(profile, turn, Boolean(state.passenger), Boolean(state.brief), hard), limit };
   }
   // For a driver who is not sure which lane to take: the lane for the next turn and whether to move now. Korean lanes
   // count from the left (the 1st lane is the leftmost). Far from the turn: move early; inside the decision distance: now.
@@ -189,6 +201,27 @@
     const n = profile.roadCells[cell] || 0;
     return n === 0 ? 'new' : n < FAMILIAR_AFTER ? 'known' : 'familiar';
   }
+  // Road segments: what happened at the turns approached through each cell, as three counts [passed, missed, no signal].
+  function noteSegment(profile, cell, passed, noSignal) {
+    if (typeof cell !== 'string' || !cell) return;
+    const v = owns(profile.segments, cell) ? profile.segments[cell] : (profile.segments[cell] = [0, 0, 0]);
+    if (passed) v[0]++; else v[1]++;
+    if (noSignal) v[2]++;
+  }
+  function segment(profile, cell) { return owns(profile.segments, cell) ? profile.segments[cell].slice() : null; }
+  // The counts of several profiles added up per segment: numbers only, nothing that says whose they were.
+  function sharedSegments(profiles) {
+    const out = {};
+    for (const p of profiles) for (const cell of Object.keys(p.segments || {})) { const v = owns(out, cell) ? out[cell] : (out[cell] = [0, 0, 0]); for (let i = 0; i < 3; i++) v[i] += p.segments[cell][i]; }
+    return out;
+  }
+  // A hard segment by this driver's own counts when there are any, otherwise by the shared ones.
+  function hardSegment(profile, shared, cell) {
+    if (typeof cell !== 'string' || !cell) return false;
+    let v = owns(profile.segments, cell) ? profile.segments[cell] : null;
+    if (!v || v[0] + v[1] === 0) v = shared && owns(shared, cell) ? shared[cell] : null;
+    return Boolean(v) && v[0] + v[1] >= SEGMENT_SAMPLES && v[1] * 2 >= v[0] + v[1];
+  }
   // One sentence when the car is parked after a trip; nothing when there was nothing to watch.
   function summarySpeech(watched, passed, missCandidates, signalOff, tripKm = -1) {
     if (!watched && !signalOff) return '';
@@ -212,12 +245,12 @@
   // Erases what this profile learned. Other profiles keep theirs.
   function clearMemory(profile) {
     Object.assign(profile, { typeMisses: {}, passStreak: {}, chosenWeak: [], places: [], habitMeters: null, habitSamples: 0, pending: [],
-      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {} });
+      signalTurns: 0, signalOnTurns: 0, destPlaces: {}, placeLabels: {}, roadCells: {}, placeCoords: {}, segments: {} });
   }
   // What a profile learned, as JSON, so it can be kept in the browser. Garbage is skipped rather than trusted.
   function snapshot(profile) {
-    const { typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords } = profile;
-    return JSON.stringify({ typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords });
+    const { typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords, segments } = profile;
+    return JSON.stringify({ typeMisses, passStreak, chosenWeak, places, habitMeters, habitSamples, signalTurns, signalOnTurns, destPlaces, placeLabels, roadCells, placeCoords, segments });
   }
   function restore(profile, text) {
     let data; try { data = JSON.parse(text || ''); } catch { return; }
@@ -234,10 +267,11 @@
     for (const id of Object.keys(plain(data.placeLabels))) labelPlace(profile, id, data.placeLabels[id]);
     for (const cell of Object.keys(plain(data.roadCells))) if (/^-?\d+,-?\d+$/.test(cell) && count(data.roadCells[cell]) > 0) profile.roadCells[cell] = data.roadCells[cell];
     for (const id of Object.keys(plain(data.placeCoords))) { const c = data.placeCoords[id]; if (Array.isArray(c) && c.length === 2) placeCoord(profile, id, Number(c[0]), Number(c[1])); }
+    for (const cell of Object.keys(plain(data.segments))) { const v = data.segments[cell]; if (/^-?\d+,-?\d+$/.test(cell) && Array.isArray(v) && v.length === 3 && v.every(n => Number.isInteger(n) && n >= 0) && v[0] + v[1] > 0) profile.segments[cell] = [v[0], v[1], Math.min(v[2], v[0] + v[1])]; }
   }
   return Object.freeze({ driverTypes, turnTypes, familiarities, LOWER_QUESTION, SPEED_REF_KPH, FAMILIAR_AFTER, BRIEF_SPEED_KPH, BRIEF_GAP_METERS, BRIEF_LIMIT_KPH, placeCoord, placeCoordOf, placeCoords,
     createProfile, misses, chooseWeak, isWeak, remembers, decisionMeters, signalRate, rarelySignals,
     decide, decidePoint, addMemo, labelPlace, placeLabel, rememberFor, placesFor, noteMiss, canReview, review, notePass, lowerType,
-    cellKey, noteRoad, familiarity, summarySpeech,
+    cellKey, noteRoad, familiarity, summarySpeech, SEGMENT_SAMPLES, noteSegment, segment, sharedSegments, hardSegment,
     briefing, briefingFor, laneHint, clearMemory, snapshot, restore });
 });
